@@ -1,0 +1,24 @@
+# permissions for end users to edit avalanchegoes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: avalanchego-editor-role
+rules:
+- apiGroups:
+  - chain.avax.network
+  resources:
+  - avalanchegoes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - chain.avax.network
+  resources:
+  - avalanchegoes/status
+  verbs:
+  - get

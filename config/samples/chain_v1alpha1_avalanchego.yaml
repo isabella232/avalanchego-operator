@@ -1,0 +1,7 @@
+apiVersion: chain.avax.network/v1alpha1
+kind: Avalanchego
+metadata:
+  name: avalanchego-sample
+spec:
+  # Add fields here
+  foo: bar

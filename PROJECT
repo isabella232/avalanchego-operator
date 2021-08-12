@@ -6,4 +6,14 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: avalanchego-operator
 repo: github.com/ava-labs/avalanchego-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: avax.network
+  group: chain
+  kind: Avalanchego
+  path: github.com/ava-labs/avalanchego-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
