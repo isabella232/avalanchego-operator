@@ -28,14 +28,17 @@ type AvalanchegoSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Avalanchego. Edit avalanchego_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Number of nodes to create. All the nodes will be created as validators
+	NodeCount int32 `json:"nodeCount,omitempty"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego
 type AvalanchegoStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Service URL of the Bootstrapper node
+	BootstrapperURL string `json:"bootstrapperURL"`
 }
 
 //+kubebuilder:object:root=true
