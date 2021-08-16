@@ -29,7 +29,22 @@ type AvalanchegoSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Number of nodes to create. All the nodes will be created as validators
-	NodeCount int32 `json:"nodeCount,omitempty"`
+	// +optional
+	// +kubebuilder:default:=5
+	NodeCount int `json:"nodeCount,omitempty"`
+
+	//Pregenerated keys for Avago nodes
+	// +optional
+	NodeKeys []Key `json:"nodeKeys,omitempty"`
+}
+
+// Key defines the private & public keys of nodes
+type Key struct {
+	// Public key
+	Certificate string `json:"certificate"`
+
+	// Private key
+	Key string `json:"key"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego
