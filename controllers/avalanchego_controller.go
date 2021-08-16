@@ -56,12 +56,23 @@ type AvalanchegoReconciler struct {
 func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 	l.Info("Started")
-	// your logic here
+	// Fetch the Avalanchego instance
 	instance := &chainv1alpha1.Avalanchego{}
-	validatorsKeys := instance.Spec.NodeKeys[:min(instance.Spec.NodeCount, len(instance.Spec.NodeKeys))]
+	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			l.Info("Not found so maybe deleted")
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
 
+	validatorsKeys := instance.Spec.NodeKeys[:min(instance.Spec.NodeCount, len(instance.Spec.NodeKeys))]
 	for i, key := range validatorsKeys {
-		l.Info("Key: ", key.Certificate)
 		err := r.ensureSecret(req, instance, r.besuSecret(instance, "validator"+strconv.Itoa(i+1), key.Certificate, key.Key), l)
 		if err != nil {
 			return ctrl.Result{}, err
