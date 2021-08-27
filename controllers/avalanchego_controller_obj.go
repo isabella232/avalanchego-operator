@@ -26,6 +26,31 @@ import (
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 )
 
+func (r *AvalanchegoReconciler) avagoConfigMap(
+	instance *chainv1alpha1.Avalanchego,
+	name string,
+	script string,
+) *corev1.ConfigMap {
+	data := make(map[string]string)
+	data["config.sh"] = string(script)
+	cm := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: instance.Namespace,
+			Labels: map[string]string{
+				"app": "avago-" + name,
+			},
+		},
+		Data: data,
+	}
+	controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	return cm
+}
+
 func (r *AvalanchegoReconciler) avagoSecret(
 	instance *chainv1alpha1.Avalanchego,
 	name string,
@@ -97,11 +122,27 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 	instance *chainv1alpha1.Avalanchego,
 	name string,
 ) *appsv1.StatefulSet {
-
+	var initContainers []corev1.Container
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
 	volumeClaim := r.getVolumeClaimTemplate(instance, name)
+
+	index := name[len(name)-1:]
+	if index == "0" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "AVAGO_BOOTSTRAP_IPS",
+			Value: "",
+		})
+	}
+	if index != "0" {
+		initContainers = r.getAvagoInitContainer(instance)
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "AVAGO_CONFIG_FILE",
+			Value: "/etc/avalanchego/conf/conf.json",
+		})
+
+	}
 
 	sts := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
@@ -133,6 +174,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 					//TODO Add checksum for cert/key
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: initContainers,
 					Containers: []corev1.Container{
 						{
 							Name:            "avago",
@@ -170,24 +212,47 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			VolumeClaimTemplates: volumeClaim,
 		},
 	}
+
 	controllerutil.SetControllerReference(instance, sts, r.Scheme)
 	return sts
 }
 
-// func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Avalanchego) []corev1.Container {
-// 	initContainers := []corev1.Container{
-// 		corev1.Container{
-// 			Name:  "init-bootnode-ip",
-// 			Image: "pegasyseng/k8s-helper:v1.18.4",
-// 			Command: []string{
-// 				"sh",
-// 				"-c",
-// 				r.getCurlCommand(instance),
-// 			},
-// 		},
-// 	}
-// 	return initContainers
-// }
+func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Avalanchego) []corev1.Container {
+	initContainers := []corev1.Container{
+		{
+			Name:  "init-bootnode-ip",
+			Image: "tutum/dnsutils:latest",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "CONFIG_PATH",
+					Value: "/tmp/conf",
+				},
+				{
+					Name:  "BOOTSTRAPPERS",
+					Value: instance.Status.BootstrapperURL,
+				},
+			},
+			Command: []string{
+				"sh",
+				"-c",
+				"/tmp/script/config.sh",
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "avalanchego-init-script",
+					MountPath: "/tmp/script",
+					ReadOnly:  true,
+				},
+				{
+					Name:      "init-volume",
+					MountPath: "/tmp/conf",
+					ReadOnly:  false,
+				},
+			},
+		},
+	}
+	return initContainers
+}
 
 func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
@@ -208,7 +273,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			},
 		},
 		{
-			Name:  "AVAGO_NETWORK",
+			Name:  "AVAGO_NETWORK_ID",
 			Value: "local",
 		},
 		{
@@ -256,6 +321,11 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 			MountPath: "/etc/avalanchego/st-certs",
 			ReadOnly:  true,
 		},
+		{
+			Name:      "init-volume",
+			MountPath: "/etc/avalanchego/conf",
+			ReadOnly:  true,
+		},
 	}
 	return volumeMounts
 }
@@ -276,6 +346,24 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "avago-" + name + "-key",
 				},
+			},
+		},
+		{
+			Name: "avalanchego-init-script",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "avago-init-script",
+					},
+					// A hack to create a literal *int32 vatiable, set to 0777
+					DefaultMode: &[]int32{0777}[0],
+				},
+			},
+		},
+		{
+			Name: "init-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}

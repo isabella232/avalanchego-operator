@@ -29,6 +29,37 @@ import (
 	"github.com/go-logr/logr"
 )
 
+func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
+	instance *chainv1alpha1.Avalanchego,
+	s *corev1.ConfigMap,
+	l logr.Logger,
+) error {
+	found := &corev1.ConfigMap{}
+	err := r.Get(context.TODO(), types.NamespacedName{
+		Name:      s.ObjectMeta.Name,
+		Namespace: s.ObjectMeta.Namespace,
+	}, found)
+	if err != nil && errors.IsNotFound(err) {
+		// Create the ConfigMap
+		l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+		err = r.Create(context.TODO(), s)
+		if err != nil {
+			// Creation failed
+			l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+			return err
+		} else {
+			// Creation was successful
+			return nil
+		}
+	} else if err != nil {
+		// Error that isn't due to the ConfigMap not existing
+		l.Error(err, "Failed to get ConfigMap")
+		return err
+	}
+
+	return nil
+}
+
 func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
 	instance *chainv1alpha1.Avalanchego,
 	s *corev1.Secret,
@@ -73,11 +104,11 @@ func (r *AvalanchegoReconciler) ensureService(
 	}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// Create the service
-		l.Info("Creating a new Service", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+		l.Info("Creating a new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
 		err = r.Create(context.TODO(), s)
 		if err != nil {
 			// Creation failed
-			l.Error(err, "Failed to create new Service", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+			l.Error(err, "Failed to create new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
 			return err
 		} else {
 			// Creation was successful
@@ -105,11 +136,11 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 	}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// Create the StatefulSet
-		l.Info("Creating a new StatefulSet", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+		l.Info("Creating a new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
 		err = r.Create(context.TODO(), s)
 		if err != nil {
 			// Creation failed
-			l.Error(err, "Failed to create new StatefulSet", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+			l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
 			return err
 		} else {
 			// Creation was successful

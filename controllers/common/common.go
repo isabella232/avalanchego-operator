@@ -17,7 +17,57 @@ limitations under the License.
 package common
 
 const (
-	AvagoReplicaCount = int32(1)
+	AvagoReplicaCount            = int32(1)
+	AvagoBootstraperFinderScript = `#!/bin/bash
+
+echo "Config path: $CONFIG_PATH/conf.json"
+echo "DNSs to resolve: $BOOTSTRAPPERS"
+
+IFS=',' read -r -a bootstrappers_array <<< "$BOOTSTRAPPERS"
+
+delim=""
+joined_ip=""
+
+for bootstrapper in "${bootstrappers_array[@]}"
+do
+		retry=3
+		dig_out=''
+		echo "--------------------------"
+
+		while [ -z "$dig_out" ] && [ "$retry" -ne "0" ]
+		do
+			if [ "$retry" -ne "3" ]; then
+				sleep 10
+			fi
+			echo "Resolving $bootstrapper"
+			dig_out=$(dig +search +short "$bootstrapper")
+			retry=$((retry-1))
+		done
+
+		echo "List of IPs to add:"
+		IFS=$'\n' read -r -d '' -a ips <<< "$dig_out"
+		for ip in "${ips[@]}"
+		do
+			echo "$ip"
+			joined_ip="$joined_ip$delim$ip"
+			delim=","
+		done
+		echo "--------------------------"
+
+done
+
+if [ -z "$joined_ip" ]; then
+	echo "ERROR no DNS adresses have been resolved"
+	exit 1
+fi
+
+echo "Final json: {\"bootstrap-ips\":\"${joined_ip}:9651\"}"
+touch "$CONFIG_PATH/conf.json"
+echo "{\"bootstrap-ips\":\"${joined_ip}:9651\"}" > "$CONFIG_PATH/conf.json"
+ls $CONFIG_PATH
+echo "Guts of $CONFIG_PATH/conf.json"
+cat $CONFIG_PATH/conf.json
+`
 )
 
 var Certificates = []struct {
