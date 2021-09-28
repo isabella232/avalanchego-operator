@@ -33,18 +33,15 @@ type AvalanchegoSpec struct {
 	// +kubebuilder:default:=5
 	NodeCount int `json:"nodeCount,omitempty"`
 
-	//Pregenerated keys for Avago nodes
+	// Docker image name. Will be used in chain deployments
 	// +optional
-	NodeKeys []Key `json:"nodeKeys,omitempty"`
-}
+	// +kubebuilder:default:="avaplatform/avalanchego"
+	Image string `json:"image,omitempty"`
 
-// Key defines the private & public keys of nodes
-type Key struct {
-	// Public key
-	Certificate string `json:"certificate"`
-
-	// Private key
-	Key string `json:"key"`
+	// Docker image tag. Will be used in chain deployments
+	// +optional
+	// +kubebuilder:default:="latest"
+	Tag string `json:"tag,omitempty"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego

@@ -4,11 +4,7 @@ metadata:
   name: avalanchego-sample
 spec:
   # Add fields here
-  nodeKeys:
-  - certificate: "testcert0"
-    key: "testkey0"
-  - certificate: "testcert1"
-    key: "testkey1"
-  - certificate: "testcert2"
-    key: "testkey2"
+  nodeCount: 5
+  image: avaplatform/avalanchego
+  tag: v1.6.0
 

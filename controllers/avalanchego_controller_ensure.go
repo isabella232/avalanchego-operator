@@ -123,6 +123,38 @@ func (r *AvalanchegoReconciler) ensureService(
 	return nil
 }
 
+func (r *AvalanchegoReconciler) ensurePVC(
+	req ctrl.Request,
+	instance *chainv1alpha1.Avalanchego,
+	s *corev1.PersistentVolumeClaim,
+	l logr.Logger,
+) error {
+	found := &corev1.PersistentVolumeClaim{}
+	err := r.Get(context.TODO(), types.NamespacedName{
+		Name:      s.ObjectMeta.Name,
+		Namespace: s.ObjectMeta.Namespace,
+	}, found)
+	if err != nil && errors.IsNotFound(err) {
+		// Create the service
+		l.Info("Creating a new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
+		err = r.Create(context.TODO(), s)
+		if err != nil {
+			// Creation failed
+			l.Error(err, "Failed to create new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
+			return err
+		} else {
+			// Creation was successful
+			return nil
+		}
+	} else if err != nil {
+		// Error that isn't due to the secret not existing
+		l.Error(err, "Failed to get PVC")
+		return err
+	}
+
+	return nil
+}
+
 func (r *AvalanchegoReconciler) ensureStatefulSet(
 	req ctrl.Request,
 	instance *chainv1alpha1.Avalanchego,

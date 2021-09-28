@@ -56,6 +56,7 @@ func (r *AvalanchegoReconciler) avagoSecret(
 	name string,
 	certificate string,
 	key string,
+	genesis string,
 ) *corev1.Secret {
 	secr := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -71,8 +72,9 @@ func (r *AvalanchegoReconciler) avagoSecret(
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
-			"staker.crt": certificate,
-			"staker.key": key,
+			"staker.crt":   certificate,
+			"staker.key":   key,
+			"genesis.json": genesis,
 		},
 	}
 	controllerutil.SetControllerReference(instance, secr, r.Scheme)
@@ -118,6 +120,35 @@ func (r *AvalanchegoReconciler) avagoService(
 	return svc
 }
 
+func (r *AvalanchegoReconciler) avagoPVC(
+	instance *chainv1alpha1.Avalanchego,
+	name string,
+) *corev1.PersistentVolumeClaim {
+	pvc := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "avago-" + name + "-pvc",
+			Namespace: instance.Namespace,
+			Labels: map[string]string{
+				"app": "avago-" + name,
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("50Gi"),
+				},
+			},
+		},
+	}
+	controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	return pvc
+}
+
 func (r *AvalanchegoReconciler) avagoStatefulSet(
 	instance *chainv1alpha1.Avalanchego,
 	name string,
@@ -126,7 +157,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
-	volumeClaim := r.getVolumeClaimTemplate(instance, name)
+	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
 	index := name[len(name)-1:]
 	if index == "0" {
@@ -178,7 +209,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 					Containers: []corev1.Container{
 						{
 							Name:            "avago",
-							Image:           "avaplatform/avalanchego:latest",
+							Image:           instance.Spec.Image + ":" + instance.Spec.Tag,
 							ImagePullPolicy: "IfNotPresent",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -209,7 +240,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 					Volumes: volumes,
 				},
 			},
-			VolumeClaimTemplates: volumeClaim,
+			// VolumeClaimTemplates: volumeClaim,
 		},
 	}
 
@@ -257,12 +288,8 @@ func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Av
 func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		{
-			Name: "AVAGO_HTTP_HOST",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "status.podIP",
-				},
-			},
+			Name:  "AVAGO_HTTP_HOST",
+			Value: "0.0.0.0",
 		},
 		{
 			Name: "AVAGO_PUBLIC_IP",
@@ -274,7 +301,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		},
 		{
 			Name:  "AVAGO_NETWORK_ID",
-			Value: "local",
+			Value: "12346",
 		},
 		{
 			Name:  "AVAGO_STAKING_ENABLED",
@@ -299,6 +326,10 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		{
 			Name:  "AVAGO_STAKING_TLS_KEY_FILE",
 			Value: "/etc/avalanchego/st-certs/staker.key",
+		},
+		{
+			Name:  "AVAGO_GENESIS",
+			Value: "/etc/avalanchego/st-certs/genesis.json",
 		},
 		{
 			Name:  "AVAGO_DB_DIR",
@@ -336,7 +367,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			Name: "avago-db-" + name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "avago-db-" + name,
+					ClaimName: "avago-" + name + "-pvc",
 				},
 			},
 		},
@@ -370,25 +401,25 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 	return volumes
 }
 
-func (r *AvalanchegoReconciler) getVolumeClaimTemplate(instance *chainv1alpha1.Avalanchego, name string) []corev1.PersistentVolumeClaim {
-	pvcs := []corev1.PersistentVolumeClaim{
-		{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "PersistentVolumeClaim",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "avago-db-" + name,
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("50Gi"),
-					},
-				},
-			},
-		},
-	}
-	return pvcs
-}
+// func (r *AvalanchegoReconciler) getVolumeClaimTemplate(instance *chainv1alpha1.Avalanchego, name string) []corev1.PersistentVolumeClaim {
+// 	pvcs := []corev1.PersistentVolumeClaim{
+// 		{
+// 			TypeMeta: metav1.TypeMeta{
+// 				APIVersion: "v1",
+// 				Kind:       "PersistentVolumeClaim",
+// 			},
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "avago-db-" + name,
+// 			},
+// 			Spec: corev1.PersistentVolumeClaimSpec{
+// 				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+// 				Resources: corev1.ResourceRequirements{
+// 					Requests: corev1.ResourceList{
+// 						corev1.ResourceStorage: resource.MustParse("50Gi"),
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	return pvcs
+// }

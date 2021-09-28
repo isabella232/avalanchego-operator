@@ -36,27 +36,19 @@ spec:
           spec:
             description: AvalanchegoSpec defines the desired state of Avalanchego
             properties:
+              image:
+                default: avaplatform/avalanchego
+                description: Docker image name. Will be used in chain deployments
+                type: string
               nodeCount:
                 default: 5
                 description: Number of nodes to create. All the nodes will be created
                   as validators
                 type: integer
-              nodeKeys:
-                description: Pregenerated keys for Avago nodes
-                items:
-                  description: Key defines the private & public keys of nodes
-                  properties:
-                    certificate:
-                      description: Public key
-                      type: string
-                    key:
-                      description: Private key
-                      type: string
-                  required:
-                  - certificate
-                  - key
-                  type: object
-                type: array
+              tag:
+                default: latest
+                description: Docker image tag. Will be used in chain deployments
+                type: string
             type: object
           status:
             description: AvalanchegoStatus defines the observed state of Avalanchego

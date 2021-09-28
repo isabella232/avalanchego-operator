@@ -65,17 +65,19 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
+	var network common.Network
 
-	//validatorsKeys := instance.Spec.NodeKeys[:min(instance.Spec.NodeCount, len(instance.Spec.NodeKeys))]
+	if instance.Status.BootstrapperURL == "" {
+		network = *common.NewNetwork(instance.Spec.NodeCount)
+	}
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	validatorsKeys := common.Certificates
-	for i, key := range validatorsKeys {
-		err = r.ensureSecret(req, instance, r.avagoSecret(instance, "validator-"+strconv.Itoa(i), key.Certificate, key.Key), l)
+	for i, key := range network.KeyPairs {
+		err = r.ensureSecret(req, instance, r.avagoSecret(instance, "validator-"+strconv.Itoa(i), key.Cert, key.Key, network.Genesis), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -83,30 +85,22 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-	}
-	err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-0"), l)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	instance.Status.BootstrapperURL = "avago-validator-0-service"
-	r.Status().Update(ctx, instance)
-
-	err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-1"), l)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-2"), l)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-3"), l)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-4"), l)
-	if err != nil {
-		return ctrl.Result{}, err
+		err = r.ensurePVC(req, instance, r.avagoPVC(instance, "validator-"+strconv.Itoa(i)), l)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = r.ensureService(req, instance, r.avagoService(instance, "validator-"+strconv.Itoa(i)), l)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-"+strconv.Itoa(i)), l)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if i == 0 {
+			instance.Status.BootstrapperURL = "avago-validator-0-service"
+			r.Status().Update(ctx, instance)
+		}
 	}
 
 	return ctrl.Result{}, nil
