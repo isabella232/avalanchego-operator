@@ -101,6 +101,8 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			instance.Status.BootstrapperURL = "avago-validator-0-service"
 			r.Status().Update(ctx, instance)
 		}
+		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-validator-"+strconv.Itoa(i)+"-service")
+		r.Status().Update(ctx, instance)
 	}
 
 	return ctrl.Result{}, nil

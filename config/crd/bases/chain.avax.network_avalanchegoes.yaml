@@ -56,8 +56,13 @@ spec:
               bootstrapperURL:
                 description: Service URL of the Bootstrapper node
                 type: string
+              networkMembersURI:
+                items:
+                  type: string
+                type: array
             required:
             - bootstrapperURL
+            - networkMembersURI
             type: object
         type: object
     served: true
