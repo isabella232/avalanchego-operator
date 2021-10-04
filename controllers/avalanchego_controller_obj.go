@@ -252,7 +252,7 @@ func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Av
 	initContainers := []corev1.Container{
 		{
 			Name:  "init-bootnode-ip",
-			Image: "tutum/dnsutils:latest",
+			Image: "avalancheavax/dnsutils:1.0.0",
 			Env: []corev1.EnvVar{
 				{
 					Name:  "CONFIG_PATH",
