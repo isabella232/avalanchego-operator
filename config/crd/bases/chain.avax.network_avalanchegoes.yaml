@@ -46,7 +46,7 @@ spec:
                   as validators
                 type: integer
               nodeSpecs:
-                default: '{NodeSpecs:{HTTPPort:9650}}'
+                default: ""
                 description: Node specifications. If used will ignore NodeCount
                 items:
                   properties:
@@ -54,6 +54,10 @@ spec:
                       default: 9651
                       description: Http port
                       type: integer
+                    isValidator:
+                      type: boolean
+                    nodeName:
+                      type: string
                   type: object
                 type: array
               tag:

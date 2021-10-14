@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -70,23 +71,22 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	var network common.Network
-
-	if instance.Status.BootstrapperURL == "" {
-		network = *common.NewNetwork(instance.Spec.NodeCount)
-	}
-
-	instance.Spec.NodeSpecs = generateNodeSpecs()
-
-	l.Info("Instance Spec: ", "instance.Spec", instance.Spec, "nodeSpecs", instance.Spec.NodeSpecs)
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for i, key := range network.KeyPairs {
-		err = r.ensureSecret(req, instance, r.avagoSecret(instance, "validator-"+strconv.Itoa(i), key.Cert, key.Key, network.Genesis), l)
+	instance.Spec.NodeSpecs = generateNodeSpecs(instance.Spec.NodeCount)
+	l.Info("Instance Spec: ", "nodeSpecs", instance.Spec.NodeSpecs)
+
+	var network common.Network
+	if instance.Status.BootstrapperURL == "" {
+		network = *common.NewNetwork(instance.Spec.NodeCount)
+	}
+
+	for i, node := range instance.Spec.NodeSpecs {
+		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, network, i), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -124,6 +124,20 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func generateNodeSpecs() []chainv1alpha1.NodeSpecs {
+func generateNodeSpecs(nodeCount int) []chainv1alpha1.NodeSpecs {
+	nodeSpecs := make([]chainv1alpha1.NodeSpecs, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		nodeSpecs[i] = chainv1alpha1.NodeSpecs{
+			HTTPPort: 9658,
+			NodeName: fmt.Sprintf("avago-node-%d", i),
+		}
+	}
+
+	// first five are validators - cannot be removed
+	for i := 0; i < nodeCount && i <= 5; i++ {
+		nodeSpecs[i].IsValidator = true
+		nodeSpecs[i].NodeName = fmt.Sprintf("avago-validator-%d", i)
+	}
+
 	return []chainv1alpha1.NodeSpecs{{HTTPPort: 9677}}
 }
