@@ -78,7 +78,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	instance.Spec.NodeSpecs = generateNodeSpecs(instance.Spec.NodeCount)
-	l.Info("Instance Spec: ", "nodeSpecs", instance.Spec.NodeSpecs)
+	l.Info("Instance Spec: ", "nodeSpecs", instance.Spec)
 
 	var network common.Network
 	if instance.Status.BootstrapperURL == "" {
