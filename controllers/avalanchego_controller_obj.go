@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 )
@@ -309,7 +310,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		},
 		{
 			Name:  "AVAGO_HTTP_PORT",
-			Value: "9660",
+			Value: strconv.Itoa(int(instance.Spec.NodeSpecs[0].HTTPPort)),
 		},
 		{
 			Name:  "AVAGO_STAKING_PORT",

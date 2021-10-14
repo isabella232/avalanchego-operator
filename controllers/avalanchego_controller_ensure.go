@@ -166,7 +166,7 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil || errors.IsNotFound(err) {
 		// Create the StatefulSet
 		l.Info("Creating a new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
 		err = r.Create(context.TODO(), s)
@@ -174,10 +174,10 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 			// Creation failed
 			l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
 			return err
-		} else {
-			// Creation was successful
-			return nil
 		}
+		// Creation was successful
+		return nil
+
 	} else if err != nil {
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get StatefulSet")

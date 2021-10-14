@@ -45,6 +45,15 @@ spec:
                 description: Number of nodes to create. All the nodes will be created
                   as validators
                 type: integer
+              nodeSpecs:
+                default: ""
+                description: Node specifications. If used will ignore NodeCount
+                items:
+                  properties:
+                    httpPort:
+                      type: integer
+                  type: object
+                type: array
               tag:
                 default: latest
                 description: Docker image tag. Will be used in chain deployments
