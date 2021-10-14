@@ -7,6 +7,5 @@ spec:
   nodeCount: 5
   image: avaplatform/avalanchego
   tag: v1.6.0
-  nodeSpecs: [
-    httpPort:9661
-  ]
+  nodeSpecs:
+    - httpPort: 9661
