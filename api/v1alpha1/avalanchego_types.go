@@ -45,7 +45,7 @@ type AvalanchegoSpec struct {
 
 	// Node specifications. If used will ignore NodeCount
 	// +optional
-	// +kubebuilder:default:="{NodeSpecs:{HTTPPort:9650}}"
+	// +kubebuilder:default:=""
 	NodeSpecs []NodeSpecs `json:"nodeSpecs,omitempty"`
 }
 

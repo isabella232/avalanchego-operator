@@ -76,6 +76,8 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
 
+	instance.Spec.NodeSpecs = generateNodeSpecs()
+
 	l.Info("Instance Spec: ", "instance.Spec", instance.Spec, "nodeSpecs", instance.Spec.NodeSpecs)
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
@@ -122,9 +124,6 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// func min(a int, b int) int {
-// 	if a < b {
-// 		return a
-// 	}
-// 	return b
-// }
+func generateNodeSpecs() []chainv1alpha1.NodeSpecs {
+	return []chainv1alpha1.NodeSpecs{{HTTPPort: 9677}}
+}
