@@ -82,6 +82,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	var network common.Network
 	if instance.Status.BootstrapperURL == "" {
+		l.Info("creating a new network")
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
 
