@@ -88,14 +88,8 @@ func (in *AvalanchegoSpec) DeepCopyInto(out *AvalanchegoSpec) {
 	*out = *in
 	if in.NodeSpecs != nil {
 		in, out := &in.NodeSpecs, &out.NodeSpecs
-		*out = make([]*NodeSpecs, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(NodeSpecs)
-				**out = **in
-			}
-		}
+		*out = make([]NodeSpecs, len(*in))
+		copy(*out, *in)
 	}
 }
 
