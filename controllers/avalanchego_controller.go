@@ -139,5 +139,5 @@ func generateNodeSpecs(nodeCount int) []chainv1alpha1.NodeSpecs {
 		nodeSpecs[i].NodeName = fmt.Sprintf("avago-validator-%d", i)
 	}
 
-	return []chainv1alpha1.NodeSpecs{{HTTPPort: 9677}}
+	return nodeSpecs
 }
