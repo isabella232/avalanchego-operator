@@ -309,7 +309,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		},
 		{
 			Name:  "AVAGO_HTTP_PORT",
-			Value: "9650",
+			Value: "9660",
 		},
 		{
 			Name:  "AVAGO_STAKING_PORT",
