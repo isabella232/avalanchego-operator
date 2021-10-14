@@ -76,7 +76,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
 
-	l.Info("got the obj: %v", instance.Spec)
+	l.Info("got the obj: ", instance.Spec)
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
