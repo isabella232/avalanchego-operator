@@ -86,6 +86,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
 
+	if len(network.KeyPairs) == 0 {
+		return ctrl.Result{}, nil
+	}
 	for i, node := range instance.Spec.NodeSpecs {
 		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, network, i), l)
 		if err != nil {
