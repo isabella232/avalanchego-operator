@@ -74,6 +74,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
+		l.Info("err on ensureConfigMap", "err", err)
 		return ctrl.Result{}, err
 	}
 
@@ -87,6 +88,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if len(network.KeyPairs) == 0 {
+		l.Info("No Key pairs")
 		return ctrl.Result{}, nil
 	}
 	for i, node := range instance.Spec.NodeSpecs {
