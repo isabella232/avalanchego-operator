@@ -310,7 +310,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		},
 		{
 			Name:  "AVAGO_HTTP_PORT",
-			Value: strconv.Itoa(int(instance.Spec.NodeSpecs)),
+			Value: strconv.Itoa(int(instance.Spec.NodeSpecs[0].HTTPPort)),
 		},
 		{
 			Name:  "AVAGO_STAKING_PORT",
