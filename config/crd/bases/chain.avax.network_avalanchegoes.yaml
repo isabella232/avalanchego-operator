@@ -46,12 +46,12 @@ spec:
                   as validators
                 type: integer
               nodeSpecs:
-                default: ""
+                default: '{NodeSpecs:{HTTPPort:9650}}'
                 description: Node specifications. If used will ignore NodeCount
                 items:
                   properties:
                     httpPort:
-                      default: 9650
+                      default: 9651
                       description: Http port
                       type: integer
                   type: object
