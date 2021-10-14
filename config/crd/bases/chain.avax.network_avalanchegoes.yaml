@@ -46,10 +46,10 @@ spec:
                   as validators
                 type: integer
               nodeSpecs:
-                default: "9661"
+                default: 9661
                 description: Node specifications. If used will ignore NodeCount
                 type: integer
-              tag:
+              taag:
                 default: latest
                 description: Docker image tag. Will be used in chain deployments
                 type: string

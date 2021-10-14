@@ -45,7 +45,7 @@ type AvalanchegoSpec struct {
 
 	// Node specifications. If used will ignore NodeCount
 	// +optional
-	// +kubebuilder:default:="9661"
+	// +kubebuilder:default:=9661
 	NodeSpecs int `json:"nodeSpecs,omitempty"`
 }
 
