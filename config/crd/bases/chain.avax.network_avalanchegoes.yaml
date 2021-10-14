@@ -46,14 +46,9 @@ spec:
                   as validators
                 type: integer
               nodeSpecs:
-                default: ""
+                default: "9661"
                 description: Node specifications. If used will ignore NodeCount
-                items:
-                  properties:
-                    httpPort:
-                      type: integer
-                  type: object
-                type: array
+                type: integer
               tag:
                 default: latest
                 description: Docker image tag. Will be used in chain deployments
