@@ -45,8 +45,8 @@ type AvalanchegoSpec struct {
 
 	// Node specifications. If used will ignore NodeCount
 	// +optional
-	// +kubebuilder:default:=""
-	NodeSpecs []NodeSpecs `json:"nodeSpecs,omitempty"`
+	// +kubebuilder:default:="9661"
+	NodeSpecs int `json:"nodeSpecs,omitempty"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego
