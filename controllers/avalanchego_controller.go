@@ -136,7 +136,7 @@ func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 	}
 
 	// first five are validators - nodes cannot be removed
-	for i := 0; i < nodeCount && i <= 5; i++ {
+	for i := 0; i < nodeCount && i < 5; i++ {
 		nodeSpecs[i].IsValidator = true
 		nodeSpecs[i].NodeName = fmt.Sprintf("avago-validator-%d", i)
 		nodeSpecs[i].Cert = network.KeyPairs[i].Cert

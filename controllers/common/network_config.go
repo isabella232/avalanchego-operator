@@ -61,9 +61,6 @@ func NewNetwork(networkSize int) *Network {
 	data, _ := json.Marshal(g)
 	n.Genesis = string(data)
 
-	fmt.Print("------------------------------------------")
-	fmt.Print(n.Genesis)
-
 	return &n
 }
 
