@@ -143,7 +143,5 @@ func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 		nodeSpecs[i].CertKey = network.KeyPairs[i].Key
 	}
 
-
-
 	return nodeSpecs
 }

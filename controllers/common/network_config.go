@@ -49,12 +49,6 @@ func NewNetwork(networkSize int) *Network {
 	json.Unmarshal([]byte(localGenesisConfigJSON), &g)
 	for i := 0; i < networkSize; i++ {
 		cert, key, id, _ := newCertKeyIdString()
-		fmt.Print("------------------------------------------")
-		fmt.Print(cert)
-		fmt.Print("------------------------------------------")
-		fmt.Print(key)
-		fmt.Print("------------------------------------------")
-		fmt.Print(id)
 		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
