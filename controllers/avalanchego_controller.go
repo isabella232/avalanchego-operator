@@ -73,7 +73,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
+	err = r.ensureConfigMap(r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		l.Info("err on ensureConfigMap", "err", err)
 		return ctrl.Result{}, err
@@ -85,23 +85,23 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 
 	for i, node := range instance.Spec.NodeSpecs {
-		err = r.ensureSecret(l, r.avagoSecret(instance, node))
+		err = r.ensureSecret(l, r.avagoSecret(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(l, r.avagoService(instance,node))
+		err = r.ensureService(l, r.avagoService(l, instance,node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(req, instance, r.avagoPVC(instance, node), l)
+		err = r.ensurePVC(r.avagoPVC(l, instance, node), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(l,  r.avagoService(instance, node))
+		err = r.ensureService(l,  r.avagoService(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(l, r.avagoStatefulSet(instance, node))
+		err = r.ensureStatefulSet(l, r.avagoStatefulSet(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}

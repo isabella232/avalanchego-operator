@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -52,7 +53,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 	return cm
 }
 
-func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs ) *corev1.Secret {
+func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *corev1.Secret {
 	secr := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -72,11 +73,15 @@ func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego,
 			"genesis.json": node.Genesis,
 		},
 	}
-	controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	// TODO handle this properly
+	err := controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to SetControllerReference on secret")
+	}
 	return secr
 }
 
-func (r *AvalanchegoReconciler) avagoService(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs, ) *corev1.Service {
+func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *corev1.Service {
 	name := node.NodeName
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -109,11 +114,16 @@ func (r *AvalanchegoReconciler) avagoService(instance *chainv1alpha1.Avalanchego
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	// TODO handle this properly
+	err := controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to SetControllerReference on service")
+	}
+
 	return svc
 }
 
-func (r *AvalanchegoReconciler) avagoPVC(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *corev1.PersistentVolumeClaim {
+func (r *AvalanchegoReconciler) avagoPVC(l logr.Logger, instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -135,11 +145,15 @@ func (r *AvalanchegoReconciler) avagoPVC(instance *chainv1alpha1.Avalanchego, no
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	// TODO handle this properly
+	err := controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to SetControllerReference on PersistentVolumeClaim")
+	}
 	return pvc
 }
 
-func (r *AvalanchegoReconciler) avagoStatefulSet(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs ) *appsv1.StatefulSet {
+func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *appsv1.StatefulSet {
 	var initContainers []corev1.Container
 	name := node.NodeName
 	envVars := r.getEnvVars(instance)
@@ -232,7 +246,11 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(instance *chainv1alpha1.Avalanc
 		},
 	}
 
-	controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	// TODO handle this properly
+	err := controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to SetControllerReference on StatefulSet")
+	}
 	return sts
 }
 
