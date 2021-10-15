@@ -17,13 +17,14 @@ limitations under the License.
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 )
@@ -167,20 +168,12 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	volumes := r.getVolumes(name)
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
-	index := name[len(name)-1:]
-	if index == "0" {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "AVAGO_BOOTSTRAP_IPS",
-			Value: "",
-		})
-	}
-	if index != "0" {
+	if !node.IsStartingValidator {
 		initContainers = r.getAvagoInitContainer(node)
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_CONFIG_FILE",
 			Value: "/etc/avalanchego/conf/conf.json",
 		})
-
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -365,18 +358,15 @@ func (r *AvalanchegoReconciler) getVolumeMounts(node chainv1alpha1.NodeSpecs) []
 			ReadOnly:  false,
 		},
 		{
+			Name:      "avago-cert-" + node.NodeName,
+			MountPath: "/etc/avalanchego/st-certs",
+			ReadOnly:  true,
+		},
+		{
 			Name:      "init-volume",
 			MountPath: "/etc/avalanchego/conf",
 			ReadOnly:  true,
 		},
-	}
-
-	if node.Cert != "" {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "avago-cert-" + node.NodeName,
-			MountPath: "/etc/avalanchego/st-certs",
-			ReadOnly:  true,
-		})
 	}
 
 	return volumeMounts
@@ -421,26 +411,3 @@ func (r *AvalanchegoReconciler) getVolumes(name string) []corev1.Volume {
 	}
 	return volumes
 }
-
-// func (r *AvalanchegoReconciler) getVolumeClaimTemplate(instance *chainv1alpha1.Avalanchego, name string) []corev1.PersistentVolumeClaim {
-// 	pvcs := []corev1.PersistentVolumeClaim{
-// 		{
-// 			TypeMeta: metav1.TypeMeta{
-// 				APIVersion: "v1",
-// 				Kind:       "PersistentVolumeClaim",
-// 			},
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name: "avago-db-" + name,
-// 			},
-// 			Spec: corev1.PersistentVolumeClaimSpec{
-// 				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-// 				Resources: corev1.ResourceRequirements{
-// 					Requests: corev1.ResourceList{
-// 						corev1.ResourceStorage: resource.MustParse("50Gi"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	return pvcs
-// }

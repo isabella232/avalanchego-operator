@@ -20,10 +20,11 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (r *AvalanchegoReconciler) ensureConfigMap(s *corev1.ConfigMap, l logr.Logger) error {
@@ -107,7 +108,7 @@ func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service) 
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensurePVC(s *corev1.PersistentVolumeClaim,l logr.Logger) error {
+func (r *AvalanchegoReconciler) ensurePVC(s *corev1.PersistentVolumeClaim, l logr.Logger) error {
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -134,7 +135,7 @@ func (r *AvalanchegoReconciler) ensurePVC(s *corev1.PersistentVolumeClaim,l logr
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureStatefulSet(l logr.Logger, s *appsv1.StatefulSet ) error {
+func (r *AvalanchegoReconciler) ensureStatefulSet(l logr.Logger, s *appsv1.StatefulSet) error {
 	statefulset := &appsv1.StatefulSet{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,

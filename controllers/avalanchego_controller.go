@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-logr/logr"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -144,6 +145,9 @@ func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 		nodeSpecs[i].Cert = network.KeyPairs[i].Cert
 		nodeSpecs[i].CertKey = network.KeyPairs[i].Key
 	}
+
+	// first validator is the starter validator - connects to no node
+	nodeSpecs[0].IsStartingValidator = true
 
 	return nodeSpecs
 }
