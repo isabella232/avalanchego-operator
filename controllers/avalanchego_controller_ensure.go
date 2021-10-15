@@ -26,10 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (r *AvalanchegoReconciler) ensureConfigMap(
-	s *corev1.ConfigMap,
-	l logr.Logger,
-) error {
+func (r *AvalanchegoReconciler) ensureConfigMap(s *corev1.ConfigMap, l logr.Logger) error {
 	found := &corev1.ConfigMap{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -56,7 +53,7 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret) error{
+func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret) error {
 	secret := &corev1.Secret{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -83,7 +80,7 @@ func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret) er
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service, ) error {
+func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service) error {
 	service := &corev1.Service{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -110,10 +107,7 @@ func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service, 
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensurePVC(
-	s *corev1.PersistentVolumeClaim,
-	l logr.Logger,
-) error {
+func (r *AvalanchegoReconciler) ensurePVC(s *corev1.PersistentVolumeClaim,l logr.Logger) error {
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,

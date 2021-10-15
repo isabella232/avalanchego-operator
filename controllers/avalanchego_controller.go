@@ -105,13 +105,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if i == 0 {
-			instance.Status.BootstrapperURL = "avago-validator-0-service"
-			err = r.Status().Update(ctx, instance)
-			if err != nil {
-				l.Error(err, "unable to update node0 instance")
-			}
-		}
+
 		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-validator-"+strconv.Itoa(i)+"-service")
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
@@ -140,6 +134,9 @@ func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 			HTTPPort: 9658,
 			NodeName: fmt.Sprintf("avago-node-%d", i),
 			Genesis: network.Genesis,
+		}
+		if i != 0 {
+			nodeSpecs[i].BootStrapperURL = "avago-validator-0-service"
 		}
 	}
 

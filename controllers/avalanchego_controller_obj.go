@@ -34,7 +34,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 	script string,
 ) *corev1.ConfigMap {
 	data := make(map[string]string)
-	data["config.sh"] = string(script)
+	data["config.sh"] = script
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -156,7 +156,7 @@ func (r *AvalanchegoReconciler) avagoPVC(l logr.Logger, instance *chainv1alpha1.
 func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *appsv1.StatefulSet {
 	var initContainers []corev1.Container
 	name := node.NodeName
-	envVars := r.getEnvVars(instance)
+	envVars := r.getEnvVars(node)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
@@ -169,7 +169,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 		})
 	}
 	if index != "0" {
-		initContainers = r.getAvagoInitContainer(instance)
+		initContainers = r.getAvagoInitContainer(node)
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_CONFIG_FILE",
 			Value: "/etc/avalanchego/conf/conf.json",
@@ -254,7 +254,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	return sts
 }
 
-func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Avalanchego) []corev1.Container {
+func (r *AvalanchegoReconciler) getAvagoInitContainer(node chainv1alpha1.NodeSpecs) []corev1.Container {
 	initContainers := []corev1.Container{
 		{
 			Name:  "init-bootnode-ip",
@@ -266,7 +266,7 @@ func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Av
 				},
 				{
 					Name:  "BOOTSTRAPPERS",
-					Value: instance.Status.BootstrapperURL,
+					Value: node.BootStrapperURL,
 				},
 			},
 			Command: []string{
@@ -291,7 +291,7 @@ func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Av
 	return initContainers
 }
 
-func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) []corev1.EnvVar {
+func (r *AvalanchegoReconciler) getEnvVars(node chainv1alpha1.NodeSpecs) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "AVAGO_HTTP_HOST",
@@ -315,7 +315,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 		},
 		{
 			Name:  "AVAGO_HTTP_PORT",
-			Value: strconv.Itoa(int(instance.Spec.NodeSpecs[0].HTTPPort)),
+			Value: strconv.Itoa(node.HTTPPort),
 		},
 		{
 			Name:  "AVAGO_STAKING_PORT",
