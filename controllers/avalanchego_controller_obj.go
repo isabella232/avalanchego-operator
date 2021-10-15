@@ -60,7 +60,7 @@ func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alph
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:     node.NodeName + "-key",
+			Name: node.NodeName + "-key",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + node.NodeName,
@@ -157,7 +157,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	var initContainers []corev1.Container
 	name := node.NodeName
 	envVars := r.getEnvVars(node)
-	volumeMounts := r.getVolumeMounts(name)
+	volumeMounts := r.getVolumeMounts(node)
 	volumes := r.getVolumes(name)
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
@@ -326,14 +326,6 @@ func (r *AvalanchegoReconciler) getEnvVars(node chainv1alpha1.NodeSpecs) []corev
 			Value: "debug",
 		},
 		{
-			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
-			Value: "/etc/avalanchego/st-certs/staker.crt",
-		},
-		{
-			Name:  "AVAGO_STAKING_TLS_KEY_FILE",
-			Value: "/etc/avalanchego/st-certs/staker.key",
-		},
-		{
 			Name:  "AVAGO_GENESIS",
 			Value: "/etc/avalanchego/st-certs/genesis.json",
 		},
@@ -343,20 +335,28 @@ func (r *AvalanchegoReconciler) getEnvVars(node chainv1alpha1.NodeSpecs) []corev
 		},
 	}
 
+	if node.Cert != "" {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name:  "AVAGO_STAKING_TLS_CERT_FILE",
+				Value: "/etc/avalanchego/st-certs/staker.crt",
+			},
+			{
+				Name:  "AVAGO_STAKING_TLS_KEY_FILE",
+				Value: "/etc/avalanchego/st-certs/staker.key",
+			},
+		}...)
+	}
+
 	return envVars
 }
 
-func (r *AvalanchegoReconciler) getVolumeMounts(name string) []corev1.VolumeMount {
+func (r *AvalanchegoReconciler) getVolumeMounts(node chainv1alpha1.NodeSpecs) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "avago-db-" + name,
+			Name:      "avago-db-" + node.NodeName,
 			MountPath: "/root/.avalanchego",
 			ReadOnly:  false,
-		},
-		{
-			Name:      "avago-cert-" + name,
-			MountPath: "/etc/avalanchego/st-certs",
-			ReadOnly:  true,
 		},
 		{
 			Name:      "init-volume",
@@ -364,6 +364,15 @@ func (r *AvalanchegoReconciler) getVolumeMounts(name string) []corev1.VolumeMoun
 			ReadOnly:  true,
 		},
 	}
+
+	if node.Cert != "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "avago-cert-" + node.NodeName,
+			MountPath: "/etc/avalanchego/st-certs",
+			ReadOnly:  true,
+		})
+	}
+	
 	return volumeMounts
 }
 
