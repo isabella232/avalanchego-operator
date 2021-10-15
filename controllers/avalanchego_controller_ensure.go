@@ -35,19 +35,19 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the ConfigMap
-		l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-			return err
-		} else {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Create the ConfigMap
+			l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+			err = r.Create(context.TODO(), s)
+			if err != nil {
+				// Creation failed
+				l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+				return err
+			}
 			// Creation was successful
 			return nil
 		}
-	} else if err != nil {
 		// Error that isn't due to the ConfigMap not existing
 		l.Error(err, "Failed to get ConfigMap")
 		return err
@@ -79,7 +79,7 @@ func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret) er
 		l.Error(err, "Failed to get Secret")
 		return err
 	}
-	l.V(1).Info("Secret already created for:", "secret.Name", secret.Name)
+
 	return nil
 }
 
@@ -106,7 +106,7 @@ func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service, 
 		l.Error(err, "Failed to get Service")
 		return err
 	}
-	l.V(1).Info("Service already created for:", "service.Name", service.Name)
+
 	return nil
 }
 
@@ -136,7 +136,6 @@ func (r *AvalanchegoReconciler) ensurePVC(
 		l.Error(err, "Failed to get PVC")
 		return err
 	}
-	l.V(1).Info("Persistent Volume Claim already created for:", "pvc.Name", pvc.Name)
 
 	return nil
 }
@@ -164,7 +163,6 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(l logr.Logger, s *appsv1.State
 		l.Error(err, "Failed to get StatefulSet")
 		return err
 	}
-	l.V(1).Info("StatefulSet already created for:", "statefulset.Name", statefulset.Name)
 
 	return nil
 }
