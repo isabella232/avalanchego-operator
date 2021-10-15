@@ -1,7 +1,7 @@
 apiVersion: chain.avax.network/v1alpha1
 kind: Avalanchego
 metadata:
-  name: avalanchego-sample
+  name: dev
 spec:
   # Add fields here
   nodeCount: 6

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
-	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,7 +83,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	l.Info("After Generated Instance:", "instance.Spec.NodeSpecs", instance.Spec.NodeCount)
 
 
-	for i, node := range instance.Spec.NodeSpecs {
+	for _, node := range instance.Spec.NodeSpecs {
 		err = r.ensureSecret(l, r.avagoSecret(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
@@ -102,7 +101,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-validator-"+strconv.Itoa(i)+"-service")
+		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, node.NodeName+"-service")
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
 			l.Error(err, "unable to update node instance")
