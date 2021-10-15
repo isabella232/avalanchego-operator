@@ -158,7 +158,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	name := node.NodeName
 	envVars := r.getEnvVars(node)
 	volumeMounts := r.getVolumeMounts(instance, name)
-	volumes := r.getVolumes(instance, name)
+	volumes := r.getVolumes(name)
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
 	index := name[len(name)-1:]
@@ -367,13 +367,13 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 	return volumeMounts
 }
 
-func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, name string) []corev1.Volume {
+func (r *AvalanchegoReconciler) getVolumes(name string) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "avago-db-" + name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "avago-" + name + "-pvc",
+					ClaimName: name + "-pvc",
 				},
 			},
 		},
@@ -381,7 +381,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			Name: "avago-cert-" + name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "avago-" + name + "-key",
+					SecretName: name + "-key",
 				},
 			},
 		},
