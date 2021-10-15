@@ -79,8 +79,10 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	l.Info("Current Instance:", "instance.Spec.NodeSpecs", instance.Spec.NodeSpecs)
 	instance.Spec.NodeSpecs = generateNodeSpecs(l, instance.Spec.NodeCount)
-	l.Info("Instance Spec: ", "nodeSpecs", instance.Spec)
+	l.Info("After Generated Instance:", "instance.Spec.NodeSpecs", instance.Spec.NodeSpecs)
+
 
 	for i, node := range instance.Spec.NodeSpecs {
 		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, i), l)
@@ -123,7 +125,7 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 	// todo only generate the network once
-	l.Info("creating a new network")
+	l.Info("generating node specs")
 	network := *common.NewNetwork(5)
 
 	nodeSpecs := make([]chainv1alpha1.NodeSpecs, nodeCount)

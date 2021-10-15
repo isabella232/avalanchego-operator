@@ -4,6 +4,6 @@ metadata:
   name: avalanchego-sample
 spec:
   # Add fields here
-  nodeCount: 9
+  nodeCount: 6
   image: avaplatform/avalanchego
   tag: v1.6.1
