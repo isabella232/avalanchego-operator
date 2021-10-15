@@ -60,7 +60,7 @@ func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alph
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + node.NodeName + "-key",
+			Name:     node.NodeName + "-key",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + node.NodeName,
@@ -157,7 +157,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	var initContainers []corev1.Container
 	name := node.NodeName
 	envVars := r.getEnvVars(node)
-	volumeMounts := r.getVolumeMounts(instance, name)
+	volumeMounts := r.getVolumeMounts(name)
 	volumes := r.getVolumes(name)
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
@@ -346,7 +346,7 @@ func (r *AvalanchegoReconciler) getEnvVars(node chainv1alpha1.NodeSpecs) []corev
 	return envVars
 }
 
-func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanchego, name string) []corev1.VolumeMount {
+func (r *AvalanchegoReconciler) getVolumeMounts(name string) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "avago-db-" + name,
