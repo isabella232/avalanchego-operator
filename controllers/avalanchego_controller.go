@@ -57,7 +57,7 @@ type AvalanchegoReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
-	l.Info("Started", "request", req)
+	l.Info("Started", "req", req)
 	// Fetch the Avalanchego instance
 	instance := &chainv1alpha1.Avalanchego{}
 	err := r.Get(context.TODO(), req.NamespacedName, instance)
@@ -85,23 +85,23 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 
 	for i, node := range instance.Spec.NodeSpecs {
-		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, i), l)
+		err = r.ensureSecret(l, r.avagoSecret(instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensureService(l, r.avagoService(instance,node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(req, instance, r.avagoPVC(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensurePVC(req, instance, r.avagoPVC(instance, node), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensureService(l,  r.avagoService(instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensureStatefulSet(l, r.avagoStatefulSet(instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}

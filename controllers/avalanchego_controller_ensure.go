@@ -60,11 +60,7 @@ func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
-	s *corev1.Secret,
-	l logr.Logger,
-) error {
+func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret, ) error {
 	found := &corev1.Secret{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -91,12 +87,7 @@ func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureService(
-	req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
-	s *corev1.Service,
-	l logr.Logger,
-) error {
+func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service, ) error {
 	found := &corev1.Service{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -155,12 +146,7 @@ func (r *AvalanchegoReconciler) ensurePVC(
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureStatefulSet(
-	req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
-	s *appsv1.StatefulSet,
-	l logr.Logger,
-) error {
+func (r *AvalanchegoReconciler) ensureStatefulSet(l logr.Logger, s *appsv1.StatefulSet ) error {
 	found := &appsv1.StatefulSet{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,

@@ -52,7 +52,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 	return cm
 }
 
-func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs, id int, ) *corev1.Secret {
+func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs ) *corev1.Secret {
 	secr := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -76,10 +76,8 @@ func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego,
 	return secr
 }
 
-func (r *AvalanchegoReconciler) avagoService(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *corev1.Service {
+func (r *AvalanchegoReconciler) avagoService(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs, ) *corev1.Service {
+	name := node.NodeName
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -115,20 +113,17 @@ func (r *AvalanchegoReconciler) avagoService(
 	return svc
 }
 
-func (r *AvalanchegoReconciler) avagoPVC(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *corev1.PersistentVolumeClaim {
+func (r *AvalanchegoReconciler) avagoPVC(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-pvc",
+			Name:      "avago-" + node.NodeName + "-pvc",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": "avago-" + node.NodeName,
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -144,11 +139,9 @@ func (r *AvalanchegoReconciler) avagoPVC(
 	return pvc
 }
 
-func (r *AvalanchegoReconciler) avagoStatefulSet(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *appsv1.StatefulSet {
+func (r *AvalanchegoReconciler) avagoStatefulSet(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs ) *appsv1.StatefulSet {
 	var initContainers []corev1.Container
+	name := node.NodeName
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
