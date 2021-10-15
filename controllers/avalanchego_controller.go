@@ -72,7 +72,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	err = r.ensureConfigMap(r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
+	err = r.ensureConfigMap(r.avagoConfigMap(l, instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		l.Info("err on ensureConfigMap", "err", err)
 		return ctrl.Result{}, err
@@ -82,13 +82,12 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	instance.Spec.NodeSpecs = generateNodeSpecs(l, instance.Spec.NodeCount)
 	l.Info("After Generated Instance:", "instance.Spec.NodeSpecs", instance.Spec.NodeCount)
 
-
 	for _, node := range instance.Spec.NodeSpecs {
 		err = r.ensureSecret(l, r.avagoSecret(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(l, r.avagoService(l, instance,node))
+		err = r.ensureService(l, r.avagoService(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -129,7 +128,9 @@ func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
 		nodeSpecs[i] = chainv1alpha1.NodeSpecs{
 			HTTPPort: 9658,
 			NodeName: fmt.Sprintf("avago-node-%d", i),
-			Genesis: network.Genesis,
+			Genesis:  network.Genesis,
+			Cert:     "",
+			CertKey:  "",
 		}
 		if i != 0 {
 			nodeSpecs[i].BootStrapperURL = "avago-validator-0-service"

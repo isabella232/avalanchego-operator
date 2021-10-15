@@ -28,11 +28,7 @@ import (
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 )
 
-func (r *AvalanchegoReconciler) avagoConfigMap(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-	script string,
-) *corev1.ConfigMap {
+func (r *AvalanchegoReconciler) avagoConfigMap(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string, script string) *corev1.ConfigMap {
 	data := make(map[string]string)
 	data["config.sh"] = script
 	cm := &corev1.ConfigMap{
@@ -49,7 +45,13 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 		},
 		Data: data,
 	}
-	controllerutil.SetControllerReference(instance, cm, r.Scheme)
+
+	// TODO handle this properly
+	err := controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to SetControllerReference on secret")
+	}
+
 	return cm
 }
 
@@ -60,7 +62,7 @@ func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alph
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: node.NodeName + "-key",
+			Name:      node.NodeName + "-key",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + node.NodeName,
@@ -68,10 +70,14 @@ func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alph
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
-			"staker.crt":   node.Cert,
-			"staker.key":   node.CertKey,
 			"genesis.json": node.Genesis,
 		},
+	}
+
+	if node.Cert != "" {
+		secr.StringData["staker.crt"] = node.Cert
+		secr.StringData["staker.key"] = node.CertKey
+
 	}
 	// TODO handle this properly
 	err := controllerutil.SetControllerReference(instance, secr, r.Scheme)
@@ -104,7 +110,7 @@ func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alp
 				{
 					Name:     "http",
 					Protocol: "TCP",
-					Port: int32(node.HTTPPort),
+					Port:     int32(node.HTTPPort),
 				},
 				{
 					Name:     "staking",
@@ -372,7 +378,7 @@ func (r *AvalanchegoReconciler) getVolumeMounts(node chainv1alpha1.NodeSpecs) []
 			ReadOnly:  true,
 		})
 	}
-	
+
 	return volumeMounts
 }
 
