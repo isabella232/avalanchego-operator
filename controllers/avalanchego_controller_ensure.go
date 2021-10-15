@@ -79,7 +79,7 @@ func (r *AvalanchegoReconciler) ensureSecret(l logr.Logger, s *corev1.Secret) er
 		l.Error(err, "Failed to get Secret")
 		return err
 	}
-	l.Info("Secret already created for:", "secret.Name", secret.Name)
+	l.V(1).Info("Secret already created for:", "secret.Name", secret.Name)
 	return nil
 }
 
@@ -106,7 +106,7 @@ func (r *AvalanchegoReconciler) ensureService(l logr.Logger, s *corev1.Service, 
 		l.Error(err, "Failed to get Service")
 		return err
 	}
-	l.Info("Service already created for:", "service.Name", service.Name)
+	l.V(1).Info("Service already created for:", "service.Name", service.Name)
 	return nil
 }
 
@@ -136,7 +136,7 @@ func (r *AvalanchegoReconciler) ensurePVC(
 		l.Error(err, "Failed to get PVC")
 		return err
 	}
-	l.Info("Persistent Volume Claim already created for:", "pvc.Name", pvc.Name)
+	l.V(1).Info("Persistent Volume Claim already created for:", "pvc.Name", pvc.Name)
 
 	return nil
 }
@@ -164,7 +164,7 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(l logr.Logger, s *appsv1.State
 		l.Error(err, "Failed to get StatefulSet")
 		return err
 	}
-	l.Info("StatefulSet already created for:", "statefulset.Name", statefulset.Name)
+	l.V(1).Info("StatefulSet already created for:", "statefulset.Name", statefulset.Name)
 
 	return nil
 }
