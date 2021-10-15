@@ -107,10 +107,16 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		if i == 0 {
 			instance.Status.BootstrapperURL = "avago-validator-0-service"
-			r.Status().Update(ctx, instance)
+			err = r.Status().Update(ctx, instance)
+			if err != nil {
+				l.Error(err, "unable to update node0 instance")
+			}
 		}
 		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-validator-"+strconv.Itoa(i)+"-service")
-		r.Status().Update(ctx, instance)
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			l.Error(err, "unable to update node instance")
+		}
 	}
 
 	return ctrl.Result{}, nil
