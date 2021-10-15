@@ -104,7 +104,7 @@ func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alp
 				{
 					Name:     "http",
 					Protocol: "TCP",
-					Port:     9650,
+					Port: int32(node.HTTPPort),
 				},
 				{
 					Name:     "staking",

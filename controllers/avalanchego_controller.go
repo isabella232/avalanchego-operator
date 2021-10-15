@@ -102,10 +102,11 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 
 		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, node.NodeName+"-service")
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
-			l.Error(err, "unable to update node instance")
-		}
+	}
+	
+	err = r.Status().Update(ctx, instance)
+	if err != nil {
+		l.Error(err, "unable to update node instance")
 	}
 
 	return ctrl.Result{}, nil
