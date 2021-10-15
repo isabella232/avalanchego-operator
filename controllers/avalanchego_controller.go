@@ -97,10 +97,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(l,  r.avagoService(l, instance, node))
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 		err = r.ensureStatefulSet(l, r.avagoStatefulSet(l, instance, node))
 		if err != nil {
 			return ctrl.Result{}, err

@@ -89,7 +89,7 @@ func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alp
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-service",
+			Name:      name + "-service",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + name,
@@ -130,7 +130,7 @@ func (r *AvalanchegoReconciler) avagoPVC(l logr.Logger, instance *chainv1alpha1.
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + node.NodeName + "-pvc",
+			Name:      node.NodeName + "-pvc",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + node.NodeName,
@@ -183,7 +183,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name,
+			Name:      name,
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
 				"app": "avago-" + name,
@@ -229,7 +229,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 								{
 									Name:          "http",
 									Protocol:      "TCP",
-									ContainerPort: 9650,
+									ContainerPort: int32(node.HTTPPort),
 								},
 								{
 									Name:          "staking",
