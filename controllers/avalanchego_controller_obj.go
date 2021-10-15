@@ -17,7 +17,6 @@ limitations under the License.
 package controllers
 
 import (
-	"github.com/ava-labs/avalanchego-operator/controllers/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,20 +52,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 	return cm
 }
 
-func (r *AvalanchegoReconciler) avagoSecret(
-	instance *chainv1alpha1.Avalanchego,
-	node chainv1alpha1.NodeSpecs,
-	network common.Network,
-	id int,
-) *corev1.Secret {
-	certificate := ""
-	key := ""
-
-	if node.IsValidator {
-		certificate = network.KeyPairs[id].Cert
-		key = network.KeyPairs[id].Key
-	}
-
+func (r *AvalanchegoReconciler) avagoSecret(instance *chainv1alpha1.Avalanchego, node chainv1alpha1.NodeSpecs, id int, ) *corev1.Secret {
 	secr := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -81,9 +67,9 @@ func (r *AvalanchegoReconciler) avagoSecret(
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
-			"staker.crt":   certificate,
-			"staker.key":   key,
-			"genesis.json": network.Genesis,
+			"staker.crt":   node.Cert,
+			"staker.key":   node.CertKey,
+			"genesis.json": node.Genesis,
 		},
 	}
 	controllerutil.SetControllerReference(instance, secr, r.Scheme)

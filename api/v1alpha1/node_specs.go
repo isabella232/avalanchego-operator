@@ -8,4 +8,7 @@ type NodeSpecs struct {
 
 	NodeName    string `json:"nodeName,omitempty"`
 	IsValidator bool   `json:"isValidator,omitempty"`
+	Genesis     string `json:"genesis,omitempty"`
+	Cert        string `json:"cert,omitempty"`
+	CertKey     string `json:"certKey,omitempty"`
 }

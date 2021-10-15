@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -78,21 +79,11 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	instance.Spec.NodeSpecs = generateNodeSpecs(instance.Spec.NodeCount)
+	instance.Spec.NodeSpecs = generateNodeSpecs(l, instance.Spec.NodeCount)
 	l.Info("Instance Spec: ", "nodeSpecs", instance.Spec)
 
-	var network common.Network
-	if instance.Status.BootstrapperURL == "" {
-		l.Info("creating a new network")
-		network = *common.NewNetwork(instance.Spec.NodeCount)
-	}
-
-	if len(network.KeyPairs) == 0 {
-		l.Info("No Key pairs")
-		return ctrl.Result{}, nil
-	}
 	for i, node := range instance.Spec.NodeSpecs {
-		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, network, i), l)
+		err = r.ensureSecret(req, instance, r.avagoSecret(instance, node, i), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -130,20 +121,29 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func generateNodeSpecs(nodeCount int) []chainv1alpha1.NodeSpecs {
+func generateNodeSpecs(l logr.Logger, nodeCount int) []chainv1alpha1.NodeSpecs {
+	// todo only generate the network once
+	l.Info("creating a new network")
+	network := *common.NewNetwork(5)
+
 	nodeSpecs := make([]chainv1alpha1.NodeSpecs, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		nodeSpecs[i] = chainv1alpha1.NodeSpecs{
 			HTTPPort: 9658,
 			NodeName: fmt.Sprintf("avago-node-%d", i),
+			Genesis: network.Genesis,
 		}
 	}
 
-	// first five are validators - cannot be removed
+	// first five are validators - nodes cannot be removed
 	for i := 0; i < nodeCount && i <= 5; i++ {
 		nodeSpecs[i].IsValidator = true
 		nodeSpecs[i].NodeName = fmt.Sprintf("avago-validator-%d", i)
+		nodeSpecs[i].Cert = network.KeyPairs[i].Cert
+		nodeSpecs[i].CertKey = network.KeyPairs[i].Key
 	}
+
+
 
 	return nodeSpecs
 }
