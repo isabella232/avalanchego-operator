@@ -79,9 +79,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	l.Info("Current Instance:", "instance.Spec", instance)
+	l.Info("Current Instance:", "instance.Spec", instance, "Spec", instance.Spec, "NodeCount", instance.Spec.NodeCount)
 	instance.Spec.NodeSpecs = generateNodeSpecs(l, instance.Spec.NodeCount)
-	l.Info("After Generated Instance:", "instance.Spec.NodeSpecs", instance.Spec.NodeCount)
+	l.Info("After generated Instance:", "instance.Spec", instance, "Spec", instance.Spec, "NodeCount", instance.Spec.NodeCount)
 
 	for _, node := range instance.Spec.NodeSpecs {
 		err = r.ensureSecret(l, r.avagoSecret(l, instance, node))
