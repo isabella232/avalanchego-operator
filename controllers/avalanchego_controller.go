@@ -102,7 +102,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		// instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, node.NodeName+"-service")
+		instance.Status.NetworkMembersURI = []string{}
 	}
 
 	err = r.Status().Update(ctx, instance)
