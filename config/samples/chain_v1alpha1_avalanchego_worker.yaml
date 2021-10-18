@@ -1,9 +1,11 @@
 apiVersion: chain.avax.network/v1alpha1
 kind: Avalanchego
 metadata:
-  name: avalanchego-sample
+  name: avalanchego-test-worker
 spec:
   # Add fields here
-  nodeCount: 5
+  deploymentName: test-worker
+  bootstrapperURL: avago-test-validator-0-service
+  nodeCount: 2
   image: avaplatform/avalanchego
   tag: v1.6.0

@@ -36,6 +36,13 @@ spec:
           spec:
             description: AvalanchegoSpec defines the desired state of Avalanchego
             properties:
+              bootstrapperURL:
+                description: If specified, nodes will be attached to existing network
+                type: string
+              deploymentName:
+                default: test-validator
+                description: Prefix,used for kubernetes objects during creation
+                type: string
               image:
                 default: avaplatform/avalanchego
                 description: Docker image name. Will be used in chain deployments

@@ -33,6 +33,15 @@ type AvalanchegoSpec struct {
 	// +kubebuilder:default:=5
 	NodeCount int `json:"nodeCount,omitempty"`
 
+	// Prefix,used for kubernetes objects during creation
+	// +optional
+	// +kubebuilder:default:="test-validator"
+	DeploymentName string `json:"deploymentName,omitempty"`
+
+	// If specified, nodes will be attached to existing network
+	// +optional
+	BootstrapperURL string `json:"bootstrapperURL,omitempty"`
+
 	// Docker image name. Will be used in chain deployments
 	// +optional
 	// +kubebuilder:default:="avaplatform/avalanchego"

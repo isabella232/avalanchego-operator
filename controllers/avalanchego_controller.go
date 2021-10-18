@@ -72,42 +72,54 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	var network common.Network
 
-	if instance.Status.BootstrapperURL == "" {
+	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") {
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
+
+	if instance.Spec.BootstrapperURL == "" {
+		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+	} else {
+		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
+	}
+	r.Status().Update(ctx, instance)
 
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for i, key := range network.KeyPairs {
-		err = r.ensureSecret(req, instance, r.avagoSecret(instance, "validator-"+strconv.Itoa(i), key.Cert, key.Key, network.Genesis), l)
+	for i := 0; i < instance.Spec.NodeCount; i++ {
+
+		if (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") {
+			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+		err = r.ensureService(req, instance, r.avagoService(instance, serviceName), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensurePVC(req, instance, r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(req, instance, r.avagoPVC(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensureService(req, instance, r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, "validator-"+strconv.Itoa(i)), l)
+		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, "validator-"+strconv.Itoa(i)), l)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if i == 0 {
-			instance.Status.BootstrapperURL = "avago-validator-0-service"
+
+		if notContains(instance.Status.NetworkMembersURI, serviceName+"-service") {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
-		instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-validator-"+strconv.Itoa(i)+"-service")
-		r.Status().Update(ctx, instance)
+
 	}
 
 	return ctrl.Result{}, nil
@@ -120,9 +132,12 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// func min(a int, b int) int {
-// 	if a < b {
-// 		return a
-// 	}
-// 	return b
-// }
+func notContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return false
+		}
+	}
+
+	return true
+}

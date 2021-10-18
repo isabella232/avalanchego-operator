@@ -160,19 +160,18 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
 	index := name[len(name)-1:]
-	if index == "0" {
+	if (index == "0") && (instance.Spec.BootstrapperURL == "") {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_BOOTSTRAP_IPS",
 			Value: "",
 		})
 	}
-	if index != "0" {
+	if (index != "0") || (instance.Spec.BootstrapperURL != "") {
 		initContainers = r.getAvagoInitContainer(instance)
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_CONFIG_FILE",
 			Value: "/etc/avalanchego/conf/conf.json",
 		})
-
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -320,23 +319,22 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Value: "debug",
 		},
 		{
-			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
-			Value: "/etc/avalanchego/st-certs/staker.crt",
-		},
-		{
-			Name:  "AVAGO_STAKING_TLS_KEY_FILE",
-			Value: "/etc/avalanchego/st-certs/staker.key",
-		},
-		{
-			Name:  "AVAGO_GENESIS",
-			Value: "/etc/avalanchego/st-certs/genesis.json",
-		},
-		{
 			Name:  "AVAGO_DB_DIR",
 			Value: "/root/.avalanchego",
 		},
 	}
-
+	if instance.Spec.BootstrapperURL == "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "AVAGO_GENESIS",
+			Value: "/etc/avalanchego/st-certs/genesis.json",
+		}, corev1.EnvVar{
+			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
+			Value: "/etc/avalanchego/st-certs/staker.crt",
+		}, corev1.EnvVar{
+			Name:  "AVAGO_STAKING_TLS_KEY_FILE",
+			Value: "/etc/avalanchego/st-certs/staker.key",
+		})
+	}
 	return envVars
 }
 
@@ -348,15 +346,18 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 			ReadOnly:  false,
 		},
 		{
-			Name:      "avago-cert-" + name,
-			MountPath: "/etc/avalanchego/st-certs",
-			ReadOnly:  true,
-		},
-		{
 			Name:      "init-volume",
 			MountPath: "/etc/avalanchego/conf",
 			ReadOnly:  true,
 		},
+	}
+
+	if instance.Spec.BootstrapperURL == "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "avago-cert-" + name,
+			MountPath: "/etc/avalanchego/st-certs",
+			ReadOnly:  true,
+		})
 	}
 	return volumeMounts
 }
@@ -368,14 +369,6 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: "avago-" + name + "-pvc",
-				},
-			},
-		},
-		{
-			Name: "avago-cert-" + name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "avago-" + name + "-key",
 				},
 			},
 		},
@@ -397,6 +390,17 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+	}
+
+	if instance.Spec.BootstrapperURL == "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: "avago-cert-" + name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "avago-" + name + "-key",
+				},
+			},
+		})
 	}
 	return volumes
 }
