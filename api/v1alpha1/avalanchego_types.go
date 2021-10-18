@@ -57,6 +57,7 @@ type AvalanchegoStatus struct {
 	// Service URL of the Bootstrapper node
 	BootstrapperURL   string   `json:"bootstrapperURL"`
 	NetworkMembersURI []string `json:"networkMembersURI"`
+	ActiveNodeCount   int      `json:"activeNodeCount,omitempty"`
 }
 
 //+kubebuilder:object:root=true
