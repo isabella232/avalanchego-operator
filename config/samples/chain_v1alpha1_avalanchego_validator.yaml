@@ -8,3 +8,6 @@ spec:
   nodeCount: 5
   image: avaplatform/avalanchego
   tag: v1.6.0
+  env:
+  - name: AVAGO_LOG_LEVEL
+    value: debug

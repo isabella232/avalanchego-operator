@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,6 +52,10 @@ type AvalanchegoSpec struct {
 	// +optional
 	// +kubebuilder:default:="latest"
 	Tag string `json:"tag,omitempty"`
+
+	// Environment variables for avalanchego.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego

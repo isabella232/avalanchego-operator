@@ -251,7 +251,7 @@ func (r *AvalanchegoReconciler) getAvagoInitContainer(instance *chainv1alpha1.Av
 	initContainers := []corev1.Container{
 		{
 			Name:  "init-bootnode-ip",
-			Image: "avalancheavax/dnsutils:1.0.0",
+			Image: "avaplatform/dnsutils:1.0.0",
 			Env: []corev1.EnvVar{
 				{
 					Name:  "CONFIG_PATH",
@@ -315,14 +315,11 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Value: "9651",
 		},
 		{
-			Name:  "AVAGO_LOG_LEVEL",
-			Value: "debug",
-		},
-		{
 			Name:  "AVAGO_DB_DIR",
 			Value: "/root/.avalanchego",
 		},
 	}
+	//Append genesis and certificates, if it is a new network
 	if instance.Spec.BootstrapperURL == "" {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_GENESIS",
@@ -335,7 +332,27 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Value: "/etc/avalanchego/st-certs/staker.key",
 		})
 	}
+
+	for _, v := range instance.Spec.Env {
+		envVarsI := indexOf(envVars, v.Name)
+		if envVarsI == -1 {
+			envVars = append(envVars, v)
+		} else {
+			envVars[envVarsI].Value = v.Value
+		}
+	}
 	return envVars
+}
+
+//Returns -1 if not found, index otherwise
+func indexOf(env []corev1.EnvVar, name string) int {
+	for i, v := range env {
+		if v.Name == name {
+			return i
+		}
+	}
+
+	return -1
 }
 
 func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanchego, name string) []corev1.VolumeMount {
@@ -404,26 +421,3 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 	}
 	return volumes
 }
-
-// func (r *AvalanchegoReconciler) getVolumeClaimTemplate(instance *chainv1alpha1.Avalanchego, name string) []corev1.PersistentVolumeClaim {
-// 	pvcs := []corev1.PersistentVolumeClaim{
-// 		{
-// 			TypeMeta: metav1.TypeMeta{
-// 				APIVersion: "v1",
-// 				Kind:       "PersistentVolumeClaim",
-// 			},
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name: "avago-db-" + name,
-// 			},
-// 			Spec: corev1.PersistentVolumeClaimSpec{
-// 				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-// 				Resources: corev1.ResourceRequirements{
-// 					Requests: corev1.ResourceList{
-// 						corev1.ResourceStorage: resource.MustParse("50Gi"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	return pvcs
-// }

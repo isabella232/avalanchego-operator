@@ -115,7 +115,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		if notContains(instance.Status.NetworkMembersURI, serviceName+"-service") {
+		if notContainsS(instance.Status.NetworkMembersURI, serviceName+"-service") {
 			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
@@ -132,7 +132,7 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func notContains(s []string, str string) bool {
+func notContainsS(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {
 			return false
