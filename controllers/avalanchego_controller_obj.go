@@ -17,6 +17,8 @@ limitations under the License.
 package controllers
 
 import (
+	"reflect"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -241,6 +243,10 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			},
 			// VolumeClaimTemplates: volumeClaim,
 		},
+	}
+
+	if !reflect.DeepEqual(instance.Spec.Resources, corev1.ResourceRequirements{}) {
+		sts.Spec.Template.Spec.Containers[0].Resources = instance.Spec.Resources
 	}
 
 	controllerutil.SetControllerReference(instance, sts, r.Scheme)

@@ -12,3 +12,10 @@ spec:
   env:
   - name: AVAGO_LOG_LEVEL
     value: debug
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi

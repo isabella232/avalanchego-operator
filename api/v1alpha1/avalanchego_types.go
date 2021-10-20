@@ -56,6 +56,10 @@ type AvalanchegoSpec struct {
 	// Environment variables for avalanchego.
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Resources (requests and limits of CPU and RAM) for the Avalanchego instances
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego
