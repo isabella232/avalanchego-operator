@@ -112,8 +112,10 @@ func (in *AvalanchegoStatus) DeepCopyInto(out *AvalanchegoStatus) {
 	*out = *in
 	if in.NetworkMembersURI != nil {
 		in, out := &in.NetworkMembersURI, &out.NetworkMembersURI
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]bool, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 }
 

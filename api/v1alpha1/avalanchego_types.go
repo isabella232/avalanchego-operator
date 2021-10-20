@@ -68,8 +68,9 @@ type AvalanchegoStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Service URL of the Bootstrapper node
-	BootstrapperURL   string   `json:"bootstrapperURL"`
-	NetworkMembersURI []string `json:"networkMembersURI"`
+	BootstrapperURL string `json:"bootstrapperURL"`
+	// Node members services Ids and if they have booted correctly
+	NetworkMembersURI map[string]bool `json:"networkMembersURI"`
 }
 
 //+kubebuilder:object:root=true
