@@ -57,8 +57,8 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 }
 
 func (r *AvalanchegoReconciler) ensureSecret(
-	s *corev1.Secret,
 	l logr.Logger,
+	s *corev1.Secret,
 ) error {
 	found := &corev1.Secret{}
 	err := r.Get(context.TODO(), types.NamespacedName{
@@ -87,8 +87,8 @@ func (r *AvalanchegoReconciler) ensureSecret(
 }
 
 func (r *AvalanchegoReconciler) ensureService(
-	s *corev1.Service,
 	l logr.Logger,
+	s *corev1.Service,
 ) error {
 	found := &corev1.Service{}
 	err := r.Get(context.TODO(), types.NamespacedName{
@@ -118,8 +118,8 @@ func (r *AvalanchegoReconciler) ensureService(
 }
 
 func (r *AvalanchegoReconciler) ensurePVC(
-	s *corev1.PersistentVolumeClaim,
 	l logr.Logger,
+	s *corev1.PersistentVolumeClaim,
 ) error {
 	found := &corev1.PersistentVolumeClaim{}
 	err := r.Get(context.TODO(), types.NamespacedName{
@@ -148,8 +148,8 @@ func (r *AvalanchegoReconciler) ensurePVC(
 }
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
-	s *appsv1.StatefulSet,
 	l logr.Logger,
+	s *appsv1.StatefulSet,
 ) error {
 	found := &appsv1.StatefulSet{}
 	err := r.Get(context.TODO(), types.NamespacedName{

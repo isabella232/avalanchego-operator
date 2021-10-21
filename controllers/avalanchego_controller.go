@@ -59,9 +59,10 @@ type AvalanchegoReconciler struct {
 func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 	l.Info("Started")
+
 	// Fetch the Avalanchego instance
 	instance := &chainv1alpha1.Avalanchego{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("Not found so maybe deleted")
@@ -76,7 +77,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	var network common.Network
 
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") {
-		network = *common.NewNetwork(instance.Spec.NodeCount)
+		network = *common.NewNetwork(l, instance.Spec.NodeCount)
 	}
 
 	if instance.Spec.BootstrapperURL == "" {
@@ -89,39 +90,41 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		l.Error(err, "unable to update instance BootstrapperURL")
 	}
 
-	err = r.ensureConfigMap(r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
+	err = r.ensureConfigMap(r.avagoConfigMap(l, instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
+		nodeName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+
 		if (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") {
-			err = r.ensureSecret(r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
+			err = r.ensureSecret(l, r.avagoSecret(l, instance, nodeName, network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis))
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		err = r.ensureService(r.avagoService(instance, serviceName), l)
+		err = r.ensureService(l, r.avagoService(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensurePVC(l, r.avagoPVC(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensureService(l, r.avagoService(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensureStatefulSet(l, r.avagoStatefulSet(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if _, ok := instance.Status.NetworkMembersURI[serviceName+"-service"]; !ok {
-			instance.Status.NetworkMembersURI[serviceName+"-service"] = false
+		// add a new service to the NetworkMembersURI if it doesn't exist already
+		if _, ok := instance.Status.NetworkMembersURI[nodeName+"-service"]; !ok {
+			instance.Status.NetworkMembersURI[nodeName+"-service"] = false
 			err = r.Status().Update(ctx, instance)
 			if err != nil {
 				l.Error(err, "unable to update the status of instance when creating a new NetworkMembersURI")
@@ -130,7 +133,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// check if a started node has booted successfully
-	// once it has booted correctly we don't check it again
+	// once it has booted correctly don't check it again
 	for nodeService, booted := range instance.Status.NetworkMembersURI {
 		if booted {
 			continue

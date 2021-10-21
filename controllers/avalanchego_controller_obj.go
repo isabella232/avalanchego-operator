@@ -19,6 +19,8 @@ package controllers
 import (
 	"reflect"
 
+	"github.com/go-logr/logr"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,13 +30,9 @@ import (
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 )
 
-func (r *AvalanchegoReconciler) avagoConfigMap(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-	script string,
-) *corev1.ConfigMap {
+func (r *AvalanchegoReconciler) avagoConfigMap(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string, script string) *corev1.ConfigMap {
 	data := make(map[string]string)
-	data["config.sh"] = string(script)
+	data["config.sh"] = script
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -49,17 +47,14 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 		},
 		Data: data,
 	}
-	controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	err := controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to set the controller reference")
+	}
 	return cm
 }
 
-func (r *AvalanchegoReconciler) avagoSecret(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-	certificate string,
-	key string,
-	genesis string,
-) *corev1.Secret {
+func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string, certificate string, key string, genesis string) *corev1.Secret {
 	secr := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -79,14 +74,14 @@ func (r *AvalanchegoReconciler) avagoSecret(
 			"genesis.json": genesis,
 		},
 	}
-	controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	err := controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to set the controller reference")
+	}
 	return secr
 }
 
-func (r *AvalanchegoReconciler) avagoService(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *corev1.Service {
+func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string) *corev1.Service {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -118,14 +113,14 @@ func (r *AvalanchegoReconciler) avagoService(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	err := controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to set the controller reference")
+	}
 	return svc
 }
 
-func (r *AvalanchegoReconciler) avagoPVC(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *corev1.PersistentVolumeClaim {
+func (r *AvalanchegoReconciler) avagoPVC(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -147,14 +142,14 @@ func (r *AvalanchegoReconciler) avagoPVC(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	err := controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to set the controller reference")
+	}
 	return pvc
 }
 
-func (r *AvalanchegoReconciler) avagoStatefulSet(
-	instance *chainv1alpha1.Avalanchego,
-	name string,
-) *appsv1.StatefulSet {
+func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string) *appsv1.StatefulSet {
 	var initContainers []corev1.Container
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
@@ -249,7 +244,10 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 		sts.Spec.Template.Spec.Containers[0].Resources = instance.Spec.Resources
 	}
 
-	controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	err := controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	if err != nil {
+		l.Error(err, "unable to set the controller reference")
+	}
 	return sts
 }
 

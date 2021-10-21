@@ -27,6 +27,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/go-logr/logr"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/hashing"
@@ -43,26 +45,18 @@ type KeyPair struct {
 	Id   string
 }
 
-func NewNetwork(networkSize int) *Network {
+func NewNetwork(l logr.Logger, networkSize int) *Network {
 	var n Network
 	g := Genesis{}
-	json.Unmarshal([]byte(localGenesisConfigJSON), &g)
+	_ = json.Unmarshal([]byte(localGenesisConfigJSON), &g) // static unmarshalling
 	for i := 0; i < networkSize; i++ {
 		cert, key, id, _ := newCertKeyIdString()
-		fmt.Print("------------------------------------------")
-		fmt.Print(cert)
-		fmt.Print("------------------------------------------")
-		fmt.Print(key)
-		fmt.Print("------------------------------------------")
-		fmt.Print(id)
+		l.Info("Generated Cert/Key pairs", "id", id)
 		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
 	data, _ := json.Marshal(g)
 	n.Genesis = string(data)
-
-	fmt.Print("------------------------------------------")
-	fmt.Print(n.Genesis)
 
 	return &n
 }
