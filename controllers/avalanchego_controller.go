@@ -74,17 +74,23 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	var network common.Network
 
+	var network common.Network
+	// if the BootstrapperURL is specified the node will bootstrap off the given network
+	// and will not have certificates defined/generated
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") {
 		network = *common.NewNetwork(l, instance.Spec.NodeCount)
 	}
 
-	if instance.Spec.BootstrapperURL == "" {
+	// ensure the instance connects to the default bootstrapper or a specified bootstrapper
+	if instance.Status.BootstrapperURL == "" {
 		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
-	} else {
-		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
+		if instance.Spec.BootstrapperURL != "" {
+			instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
+		}
 	}
+
+	// update the current instance status
 	err = r.Status().Update(ctx, instance)
 	if err != nil {
 		l.Error(err, "unable to update instance BootstrapperURL")

@@ -31,8 +31,6 @@ import (
 )
 
 func (r *AvalanchegoReconciler) avagoConfigMap(l logr.Logger, instance *chainv1alpha1.Avalanchego, name string, script string) *corev1.ConfigMap {
-	data := make(map[string]string)
-	data["config.sh"] = script
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -45,7 +43,9 @@ func (r *AvalanchegoReconciler) avagoConfigMap(l logr.Logger, instance *chainv1a
 				"app": "avago-" + name,
 			},
 		},
-		Data: data,
+		Data: map[string]string{
+			"config.sh": script,
+		},
 	}
 	err := controllerutil.SetControllerReference(instance, cm, r.Scheme)
 	if err != nil {
