@@ -57,6 +57,9 @@ type AvalanchegoReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	var network common.Network
+	var updated, updatedConfigMap, updatedSecret, updatedService, updatedPVC, updatedStatefulSet, updateNetworkMembers bool
+
 	l := log.FromContext(ctx)
 	l.Info("Started")
 
@@ -75,7 +78,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	var network common.Network
 	// if the BootstrapperURL is specified the node will bootstrap off the given network
 	// and will not have certificates defined/generated
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") {
@@ -84,19 +86,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// ensure the instance connects to the default bootstrapper or a specified bootstrapper
 	if instance.Status.BootstrapperURL == "" {
-		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+		// the first node will be the default bootstrapping node
+		instance.Status.BootstrapperURL = baseName(instance.Spec.DeploymentName) + "-0-service"
 		if instance.Spec.BootstrapperURL != "" {
 			instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
 		}
 	}
 
-	// update the current instance status
-	err = r.Status().Update(ctx, instance)
-	if err != nil {
-		l.Error(err, "unable to update instance BootstrapperURL")
-	}
-
-	err = r.ensureConfigMap(r.avagoConfigMap(l, instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
+	updatedConfigMap, err = r.ensureConfigMap(r.avagoConfigMap(l, instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -105,62 +102,69 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		nodeName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
 
 		if (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") {
-			err = r.ensureSecret(l, r.avagoSecret(l, instance, nodeName, network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis))
+			updatedSecret, err = r.ensureSecret(l, r.avagoSecret(l, instance, nodeName, network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis))
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		err = r.ensureService(l, r.avagoService(l, instance, nodeName))
+		updatedService, err = r.ensureService(l, r.avagoService(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(l, r.avagoPVC(l, instance, nodeName))
+
+		updatedPVC, err = r.ensurePVC(l, r.avagoPVC(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(l, r.avagoService(l, instance, nodeName))
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		err = r.ensureStatefulSet(l, r.avagoStatefulSet(l, instance, nodeName))
+
+		updatedStatefulSet, err = r.ensureStatefulSet(l, r.avagoStatefulSet(l, instance, nodeName))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// add a new service to the NetworkMembersURI if it doesn't exist already
-		if _, ok := instance.Status.NetworkMembersURI[nodeName+"-service"]; !ok {
-			instance.Status.NetworkMembersURI[nodeName+"-service"] = false
-			err = r.Status().Update(ctx, instance)
-			if err != nil {
-				l.Error(err, "unable to update the status of instance when creating a new NetworkMembersURI")
-			}
+		if notContainsS(instance.Status.NetworkMembersURI, serviceName(nodeName)) {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, chainv1alpha1.NodeStatus{
+				Name:  serviceName(nodeName),
+				Ready: chainv1alpha1.NotReady,
+			})
+			updateNetworkMembers = true
 		}
+
+		// if any of the ensure-cycles has an update store the new status of the instance
+		updated = updated || updatedConfigMap || updatedSecret || updatedService || updatedPVC || updatedStatefulSet || updateNetworkMembers
 	}
 
 	// check if a started node has booted successfully
-	// once it has booted correctly don't check it again
-	for nodeService, booted := range instance.Status.NetworkMembersURI {
-		if booted {
+	// once it has booted correctly once, don't check it again
+	for i, nodeStatus := range instance.Status.NetworkMembersURI {
+		if nodeStatus.Ready == chainv1alpha1.IsReady {
+			// skip if it's marked as ready
 			continue
 		}
 
-		healthClient := health.NewClient(fmt.Sprintf("http://avago-%s.dev.svc.cluster.local:%d", nodeService, 9650), 20*time.Second)
+		healthClient := health.NewClient(fmt.Sprintf("http://%s:%d", nodeStatus.Name, 9650), 20*time.Second)
 		healthResp, err := healthClient.Health()
 		if err != nil {
-			l.Info("error calling health on", "nodeService", nodeService, "err", err)
-			// don't update it's status
-			continue
+			l.Error(err, "error calling health on", "nodeService", nodeStatus.Name)
 		}
 
-		if healthResp.Healthy {
-			instance.Status.NetworkMembersURI[nodeService] = true
-			err = r.Status().Update(ctx, instance)
-			if err != nil {
-				l.Error(err, "unable to update the status of instance when updating the state of NetworkMembersURI")
-			}
+		if healthResp != nil && healthResp.Healthy {
+			instance.Status.NetworkMembersURI[i].Ready = chainv1alpha1.IsReady
 		}
-		l.Info("called health - ", "health", healthResp)
+		// if healthy, update the instance to store state
+		// if not healthy, update the instance to trigger a reconcile-loop
+		updated = true
+	}
+
+	// updating the instance will store the current instance
+	// which in turn will trigger a new reconcile cycle
+	if updated {
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			l.Error(err, "unable to update the status of instance when updating the state of NetworkMembersURI")
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -173,12 +177,18 @@ func (r *AvalanchegoReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func notContainsS(s []string, str string) bool {
+func notContainsS(s []chainv1alpha1.NodeStatus, str string) bool {
 	for _, v := range s {
-		if v == str {
+		if v.Name == str {
 			return false
 		}
 	}
-
 	return true
 }
+
+func baseName(name string) string    { return "avago-" + name }
+func serviceName(name string) string { return baseName(name) + "-service" }
+func secretName(name string) string  { return baseName(name) + "-key" }
+func pvcName(name string) string     { return baseName(name) + "-pvc" }
+func dbName(name string) string      { return baseName(name) + "-db" }
+func certName(name string) string    { return baseName(name) + "-cert" }

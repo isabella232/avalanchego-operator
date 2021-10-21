@@ -40,7 +40,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(l logr.Logger, instance *chainv1a
 			Name:      name,
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 		},
 		Data: map[string]string{
@@ -61,10 +61,10 @@ func (r *AvalanchegoReconciler) avagoSecret(l logr.Logger, instance *chainv1alph
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-key",
+			Name:      secretName(name),
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 		},
 		Type: "Opaque",
@@ -88,16 +88,16 @@ func (r *AvalanchegoReconciler) avagoService(l logr.Logger, instance *chainv1alp
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-service",
+			Name:      serviceName(name),
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "None",
 			Selector: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -127,10 +127,10 @@ func (r *AvalanchegoReconciler) avagoPVC(l logr.Logger, instance *chainv1alpha1.
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-pvc",
+			Name:      pvcName(name),
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -154,7 +154,6 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
-	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
 
 	index := name[len(name)-1:]
 	if (index == "0") && (instance.Spec.BootstrapperURL == "") {
@@ -177,28 +176,28 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name,
+			Name:      baseName(name),
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": baseName(name),
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			// A hack to create a literal *int32 vatiable, set to 1
+			// A hack to create a literal *int32 variable, set to 1
 			Replicas:            &[]int32{1}[0],
 			PodManagementPolicy: "OrderedReady",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "avago-" + name,
+					"app": baseName(name),
 				},
 			},
-			ServiceName: "avago-" + name + "-service",
+			ServiceName: serviceName(name),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "avago-" + name,
+						"app": baseName(name),
 					},
-					//TODO Add checksum for cert/key
+					// TODO Add checksum for cert/key
 				},
 				Spec: corev1.PodSpec{
 					InitContainers: initContainers,
@@ -236,7 +235,6 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(l logr.Logger, instance *chainv
 					Volumes: volumes,
 				},
 			},
-			// VolumeClaimTemplates: volumeClaim,
 		},
 	}
 
@@ -323,7 +321,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Value: "/root/.avalanchego",
 		},
 	}
-	//Append genesis and certificates, if it is a new network
+	// Append genesis and certificates, if it is a new network
 	if instance.Spec.BootstrapperURL == "" {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_GENESIS",
@@ -348,7 +346,7 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 	return envVars
 }
 
-//Returns -1 if not found, index otherwise
+// Returns -1 if not found, index otherwise
 func indexOf(env []corev1.EnvVar, name string) int {
 	for i, v := range env {
 		if v.Name == name {
@@ -362,7 +360,7 @@ func indexOf(env []corev1.EnvVar, name string) int {
 func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanchego, name string) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "avago-db-" + name,
+			Name:      dbName(name),
 			MountPath: "/root/.avalanchego",
 			ReadOnly:  false,
 		},
@@ -375,7 +373,7 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 
 	if instance.Spec.BootstrapperURL == "" {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "avago-cert-" + name,
+			Name:      certName(name),
 			MountPath: "/etc/avalanchego/st-certs",
 			ReadOnly:  true,
 		})
@@ -386,10 +384,10 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, name string) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
-			Name: "avago-db-" + name,
+			Name: dbName(name),
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "avago-" + name + "-pvc",
+					ClaimName: pvcName(name),
 				},
 			},
 		},
@@ -401,7 +399,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 						Name: "avago-init-script",
 					},
 					// A hack to create a literal *int32 vatiable, set to 0777
-					DefaultMode: &[]int32{0777}[0],
+					DefaultMode: &[]int32{0o777}[0],
 				},
 			},
 		},
@@ -415,10 +413,10 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 
 	if instance.Spec.BootstrapperURL == "" {
 		volumes = append(volumes, corev1.Volume{
-			Name: "avago-cert-" + name,
+			Name: certName(name),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "avago-" + name + "-key",
+					SecretName: secretName(name),
 				},
 			},
 		})

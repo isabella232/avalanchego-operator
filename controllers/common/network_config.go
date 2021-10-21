@@ -42,7 +42,7 @@ type Network struct {
 type KeyPair struct {
 	Cert string
 	Key  string
-	Id   string
+	ID   string
 }
 
 func NewNetwork(l logr.Logger, networkSize int) *Network {
@@ -50,9 +50,9 @@ func NewNetwork(l logr.Logger, networkSize int) *Network {
 	g := Genesis{}
 	_ = json.Unmarshal([]byte(localGenesisConfigJSON), &g) // static unmarshalling
 	for i := 0; i < networkSize; i++ {
-		cert, key, id, _ := newCertKeyIdString()
+		cert, key, id, _ := newCertKeyIDString()
 		l.Info("Generated Cert/Key pairs", "id", id)
-		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
+		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, ID: id})
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
 	data, _ := json.Marshal(g)
@@ -61,7 +61,7 @@ func NewNetwork(l logr.Logger, networkSize int) *Network {
 	return &n
 }
 
-func newCertKeyIdString() (string, string, string, error) {
+func newCertKeyIDString() (string, string, string, error) {
 	// Create key to sign cert with
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -100,7 +100,7 @@ func newCertKeyIdString() (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("problem deriving node ID from certificate: %w", err)
 	}
-	fullId := id.PrefixedString(constants.NodeIDPrefix)
+	fullID := id.PrefixedString(constants.NodeIDPrefix)
 
-	return certBuff.String(), keyBuff.String(), fullId, nil
+	return certBuff.String(), keyBuff.String(), fullID, nil
 }

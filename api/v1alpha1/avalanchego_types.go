@@ -70,8 +70,24 @@ type AvalanchegoStatus struct {
 	// Service URL of the Bootstrapper node
 	BootstrapperURL string `json:"bootstrapperURL"`
 	// Node members services Ids and if they have booted correctly
-	NetworkMembersURI map[string]bool `json:"networkMembersURI"`
+	NetworkMembersURI []NodeStatus `json:"networkMembersURI"`
 }
+
+// NodeStatus defines the current status of the Avalanchego instance
+type NodeStatus struct {
+	// Name identifies the Avalanchego instace
+	Name string `json:"name,omitempty"`
+	// Ready identifies if the Avalanchego instances has bootstrapped correctly
+	Ready Ready `json:"bootstrapped"`
+}
+
+// Ready identifies if the Avalanchego instances has bootstrapped correctly
+type Ready string
+
+const (
+	IsReady  Ready = "ready"
+	NotReady Ready = "not ready"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

@@ -29,7 +29,7 @@ import (
 func (r *AvalanchegoReconciler) ensureConfigMap(
 	s *corev1.ConfigMap,
 	l logr.Logger,
-) error {
+) (bool, error) {
 	found := &corev1.ConfigMap{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -43,23 +43,23 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 			if err != nil {
 				// Creation failed
 				l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-				return err
+				return false, err
 			}
 
-			return nil
+			return true, nil
 		}
 		// Error that isn't due to the ConfigMap not existing
 		l.Error(err, "Failed to get ConfigMap")
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (r *AvalanchegoReconciler) ensureSecret(
 	l logr.Logger,
 	s *corev1.Secret,
-) error {
+) (bool, error) {
 	found := &corev1.Secret{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -73,23 +73,23 @@ func (r *AvalanchegoReconciler) ensureSecret(
 			if err != nil {
 				// Creation failed
 				l.Error(err, "Failed to create new Secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
-				return err
+				return false, err
 			}
-			return nil
+			return true, nil
 		}
 
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get Secret")
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (r *AvalanchegoReconciler) ensureService(
 	l logr.Logger,
 	s *corev1.Service,
-) error {
+) (bool, error) {
 	found := &corev1.Service{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -103,24 +103,24 @@ func (r *AvalanchegoReconciler) ensureService(
 			if err != nil {
 				// Creation failed
 				l.Error(err, "Failed to create new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
-				return err
+				return false, err
 			}
 			// Creation was successful
-			return nil
+			return true, nil
 		}
 
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get Service")
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (r *AvalanchegoReconciler) ensurePVC(
 	l logr.Logger,
 	s *corev1.PersistentVolumeClaim,
-) error {
+) (bool, error) {
 	found := &corev1.PersistentVolumeClaim{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -134,23 +134,23 @@ func (r *AvalanchegoReconciler) ensurePVC(
 			if err != nil {
 				// Creation failed
 				l.Error(err, "Failed to create new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
-				return err
+				return false, err
 			}
 			// Creation was successful
-			return nil
+			return true, nil
 		}
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get PVC")
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
 	l logr.Logger,
 	s *appsv1.StatefulSet,
-) error {
+) (bool, error) {
 	found := &appsv1.StatefulSet{}
 	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
@@ -164,15 +164,15 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 			if err != nil {
 				// Creation failed
 				l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
-				return err
+				return false, err
 			}
 			// Creation was successful
-			return nil
+			return true, nil
 		}
 		// Error that isn't due to the StatefulSet not existing
 		l.Error(err, "Failed to get StatefulSet")
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
