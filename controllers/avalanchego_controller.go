@@ -83,7 +83,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	r.Status().Update(ctx, instance)
 
-	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-init-script", common.AvagoBootstraperFinderScript), l)
+	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
