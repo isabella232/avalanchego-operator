@@ -400,7 +400,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "avago-init-script",
+						Name: "avago-" + instance.Spec.DeploymentName + "init-script",
 					},
 					// A hack to create a literal *int32 vatiable, set to 0777
 					DefaultMode: &[]int32{0777}[0],
