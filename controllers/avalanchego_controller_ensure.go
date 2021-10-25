@@ -39,24 +39,22 @@ func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the ConfigMap
-		l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-			return err
-		} else {
-			// Creation was successful
-			return nil
-		}
-	} else if err != nil {
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
 		// Error that isn't due to the ConfigMap not existing
 		l.Error(err, "Failed to get ConfigMap")
 		return err
 	}
-
+	// Create the ConfigMap
+	l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+	if err := r.Create(context.TODO(), s); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
+		return err
+	}
+	// Creation was successful
 	return nil
 }
 
@@ -70,24 +68,22 @@ func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the secret
-		l.Info("Creating a new secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new Secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
-			return err
-		} else {
-			// Creation was successful
-			return nil
-		}
-	} else if err != nil {
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get Secret")
 		return err
 	}
-
+	// Create the secret
+	l.Info("Creating a new secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+	if err := r.Create(context.TODO(), s); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new Secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
+		return err
+	}
+	// Creation was successful
 	return nil
 }
 
@@ -102,24 +98,22 @@ func (r *AvalanchegoReconciler) ensureService(
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the service
-		l.Info("Creating a new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
-			return err
-		} else {
-			// Creation was successful
-			return nil
-		}
-	} else if err != nil {
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get Service")
 		return err
 	}
-
+	// Create the service
+	l.Info("Creating a new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
+	if err := r.Create(context.TODO(), s); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
+		return err
+	}
+	// Creation was successful
 	return nil
 }
 
@@ -134,24 +128,22 @@ func (r *AvalanchegoReconciler) ensurePVC(
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the service
-		l.Info("Creating a new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
-			return err
-		} else {
-			// Creation was successful
-			return nil
-		}
-	} else if err != nil {
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get PVC")
 		return err
 	}
-
+	// Create the service
+	l.Info("Creating a new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
+	if err := r.Create(context.TODO(), s); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
+		return err
+	}
+	// Creation was successful
 	return nil
 }
 
@@ -166,23 +158,21 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Create the StatefulSet
-		l.Info("Creating a new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
-		err = r.Create(context.TODO(), s)
-		if err != nil {
-			// Creation failed
-			l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
-			return err
-		} else {
-			// Creation was successful
-			return nil
-		}
-	} else if err != nil {
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
 		// Error that isn't due to the secret not existing
 		l.Error(err, "Failed to get StatefulSet")
 		return err
 	}
-
+	// Create the StatefulSet
+	l.Info("Creating a new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
+	if err := r.Create(context.TODO(), s); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
+		return err
+	}
+	// Creation was successful
 	return nil
 }
