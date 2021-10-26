@@ -146,6 +146,10 @@ spec:
                   - name
                   type: object
                 type: array
+              genesis:
+                description: Genesis for nodes, that will be attached to existing
+                  network
+                type: string
               image:
                 default: avaplatform/avalanchego
                 description: Docker image name. Will be used in chain deployments
@@ -193,12 +197,17 @@ spec:
               bootstrapperURL:
                 description: Service URL of the Bootstrapper node
                 type: string
+              genesis:
+                description: genesis.json
+                type: string
               networkMembersURI:
+                description: Node services list
                 items:
                   type: string
                 type: array
             required:
             - bootstrapperURL
+            - genesis
             - networkMembersURI
             type: object
         type: object

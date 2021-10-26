@@ -43,6 +43,10 @@ type AvalanchegoSpec struct {
 	// +optional
 	BootstrapperURL string `json:"bootstrapperURL,omitempty"`
 
+	// Genesis for nodes, that will be attached to existing network
+	// +optional
+	Genesis string `json:"genesis,omitempty"`
+
 	// Docker image name. Will be used in chain deployments
 	// +optional
 	// +kubebuilder:default:="avaplatform/avalanchego"
@@ -68,8 +72,11 @@ type AvalanchegoStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Service URL of the Bootstrapper node
-	BootstrapperURL   string   `json:"bootstrapperURL"`
+	BootstrapperURL string `json:"bootstrapperURL"`
+	// Node services list
 	NetworkMembersURI []string `json:"networkMembersURI"`
+	// genesis.json
+	Genesis string `json:"genesis"`
 }
 
 //+kubebuilder:object:root=true

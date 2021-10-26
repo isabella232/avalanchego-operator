@@ -78,8 +78,12 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	if instance.Spec.BootstrapperURL == "" {
 		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+		if network.Genesis != "" {
+			instance.Status.Genesis = network.Genesis
+		}
 	} else {
 		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
+		instance.Status.Genesis = instance.Spec.Genesis
 	}
 	r.Status().Update(ctx, instance)
 
@@ -92,6 +96,11 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		if (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") {
 			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		} else {
+			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), "", "", instance.Spec.Genesis), l)
 			if err != nil {
 				return ctrl.Result{}, err
 			}

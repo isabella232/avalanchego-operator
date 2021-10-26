@@ -324,13 +324,14 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Name:  "AVAGO_DB_DIR",
 			Value: "/root/.avalanchego",
 		},
+		{
+			Name:  "AVAGO_GENESIS",
+			Value: "/etc/avalanchego/st-certs/genesis.json",
+		},
 	}
 	//Append genesis and certificates, if it is a new network
 	if instance.Spec.BootstrapperURL == "" {
 		envVars = append(envVars, corev1.EnvVar{
-			Name:  "AVAGO_GENESIS",
-			Value: "/etc/avalanchego/st-certs/genesis.json",
-		}, corev1.EnvVar{
 			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
 			Value: "/etc/avalanchego/st-certs/staker.crt",
 		}, corev1.EnvVar{
@@ -373,15 +374,13 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 			MountPath: "/etc/avalanchego/conf",
 			ReadOnly:  true,
 		},
-	}
-
-	if instance.Spec.BootstrapperURL == "" {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		{
 			Name:      "avago-cert-" + name,
 			MountPath: "/etc/avalanchego/st-certs",
 			ReadOnly:  true,
-		})
+		},
 	}
+
 	return volumeMounts
 }
 
@@ -413,17 +412,15 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
-	}
-
-	if instance.Spec.BootstrapperURL == "" {
-		volumes = append(volumes, corev1.Volume{
+		{
 			Name: "avago-cert-" + name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "avago-" + name + "-key",
 				},
 			},
-		})
+		},
 	}
+
 	return volumes
 }
