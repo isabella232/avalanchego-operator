@@ -124,7 +124,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		if notContainsS(instance.Status.NetworkMembersURI, serviceName+"-service") {
+		if notContainsS(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service") {
 			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
