@@ -105,7 +105,11 @@ spec:
 
 `genesis` mandatory; genesis information in JSON format
 
-`certificates` optional; an array of certificates/keys; autogenerates, if empty; length of the array should be equal to `nodeCount`
+`certificates` optional; an array of certificates/keys; autogenerates, if empty; length of the array should be equal to 
+
+`nodeCount`
+
+For fully custom deployment see `config/samples/chain_v1alpha1_avalanchego_static.yaml`
 
 ## Developing
 This operator was created with operator-SDK (https://sdk.operatorframework.io/docs/)

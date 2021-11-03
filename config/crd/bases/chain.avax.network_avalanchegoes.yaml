@@ -39,6 +39,20 @@ spec:
               bootstrapperURL:
                 description: If specified, nodes will be attached to existing network
                 type: string
+              certificates:
+                description: Certificates for nodes, quantity, should correlate to
+                  nodeCount
+                items:
+                  properties:
+                    cert:
+                      type: string
+                    key:
+                      type: string
+                  required:
+                  - cert
+                  - key
+                  type: object
+                type: array
               deploymentName:
                 default: test-validator
                 description: Prefix,used for kubernetes objects during creation
@@ -196,6 +210,9 @@ spec:
             properties:
               bootstrapperURL:
                 description: Service URL of the Bootstrapper node
+                type: string
+              error:
+                description: String to indicate a logical error
                 type: string
               genesis:
                 description: genesis.json

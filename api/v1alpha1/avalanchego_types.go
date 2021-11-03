@@ -47,6 +47,10 @@ type AvalanchegoSpec struct {
 	// +optional
 	Genesis string `json:"genesis,omitempty"`
 
+	// Certificates for nodes, quantity, should correlate to nodeCount
+	// +optional
+	Certificates []Certificate `json:"certificates,omitempty"`
+
 	// Docker image name. Will be used in chain deployments
 	// +optional
 	// +kubebuilder:default:="avaplatform/avalanchego"
@@ -66,6 +70,11 @@ type AvalanchegoSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
+type Certificate struct {
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
+}
+
 // AvalanchegoStatus defines the observed state of Avalanchego
 type AvalanchegoStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -73,10 +82,15 @@ type AvalanchegoStatus struct {
 
 	// Service URL of the Bootstrapper node
 	BootstrapperURL string `json:"bootstrapperURL"`
+
 	// Node services list
 	NetworkMembersURI []string `json:"networkMembersURI"`
+
 	// genesis.json
 	Genesis string `json:"genesis"`
+
+	//String to indicate a logical error
+	Error string `json:"error,omitempty"`
 }
 
 //+kubebuilder:object:root=true
