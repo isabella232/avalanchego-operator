@@ -329,8 +329,8 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Value: "/etc/avalanchego/st-certs/genesis.json",
 		},
 	}
-	//Append genesis and certificates, if it is a new network
-	if instance.Spec.BootstrapperURL == "" {
+	//Append genesis and certificates, if it is a new network or cert provided
+	if (instance.Spec.BootstrapperURL == "") || (len(instance.Spec.Certificates) > 0) {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
 			Value: "/etc/avalanchego/st-certs/staker.crt",
