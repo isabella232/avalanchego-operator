@@ -17,6 +17,8 @@ spec:
   nodeCount: 5
   image: avaplatform/avalanchego
   tag: v1.6.0
+  imagePullSecrets:
+  - name: regcred
   env:
   - name: AVAGO_LOG_LEVEL
     value: debug
@@ -40,6 +42,8 @@ spec:
 `env` common configuration for chain nodes, check the full list here: https://github.com/ava-labs/avalanchego/blob/master/config/keys.go
 
 `resources` amount of CPU and RAM, an individual node would be able to use (https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+`imagePullSecrets`  a map of preset secrets with dockerhub credentials. More information on how to generate and upload a dockerhub secret here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 
 ### Logic and deployment output
 WARNING: currently operator does not support in-flight changes. Spin up a new node, and delete the existing one if not needed.

@@ -68,6 +68,10 @@ type AvalanchegoSpec struct {
 	// Resources (requests and limits of CPU and RAM) for the Avalanchego instances
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	//Specify docker hub secret
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 type Certificate struct {
