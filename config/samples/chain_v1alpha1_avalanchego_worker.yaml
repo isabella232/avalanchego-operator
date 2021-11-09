@@ -3,7 +3,6 @@ kind: Avalanchego
 metadata:
   name: avalanchego-test-worker
 spec:
-  # Add fields here
   deploymentName: test-worker
   bootstrapperURL: avago-test-validator-0-service
   nodeCount: 2
@@ -19,3 +18,5 @@ spec:
     requests:
       cpu: 500m
       memory: 1Gi
+# Genesis is in deployed validator status
+  genesis: ''

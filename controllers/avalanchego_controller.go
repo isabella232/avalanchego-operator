@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -72,14 +73,35 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	var network common.Network
 
-	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") {
+	//Pre flight checks
+	//Number of certs should match nodeCount
+	if (len(instance.Spec.Certificates) > 0) && (len(instance.Spec.Certificates) != instance.Spec.NodeCount) {
+		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
+		instance.Status.Error = err.Error()
+		r.Status().Update(ctx, instance)
+		return ctrl.Result{}, err
+	}
+	//Clean up env vars
+	for i, v := range instance.Spec.Env {
+		if (v.Name == "AVAGO_PUBLIC_IP") || (v.Name == "AVAGO_STAKING_TLS_CERT_FILE") || (v.Name == "AVAGO_STAKING_TLS_KEY_FILE") || (v.Name == "AVAGO_DB_DIR") {
+			instance.Spec.Env[i] = instance.Spec.Env[len(instance.Spec.Env)-1]
+			instance.Spec.Env = instance.Spec.Env[:len(instance.Spec.Env)-1]
+		}
+
+	}
+
+	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
 
 	if instance.Spec.BootstrapperURL == "" {
 		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+		if network.Genesis != "" {
+			instance.Status.Genesis = network.Genesis
+		}
 	} else {
 		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
+		instance.Status.Genesis = instance.Spec.Genesis
 	}
 	r.Status().Update(ctx, instance)
 
@@ -90,8 +112,23 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
 
-		if (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") {
+		switch {
+		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
+			bytes, _ := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
+			tempCert := string(bytes)
+			bytes, _ = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
+			tempKey := string(bytes)
+			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), tempCert, tempKey, instance.Spec.Genesis), l)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		default:
+			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), "", "", instance.Spec.Genesis), l)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -115,8 +152,8 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		if notContainsS(instance.Status.NetworkMembersURI, serviceName+"-service") {
-			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, serviceName+"-service")
+		if notContainsS(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service") {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
 

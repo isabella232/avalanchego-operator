@@ -39,6 +39,20 @@ spec:
               bootstrapperURL:
                 description: If specified, nodes will be attached to existing network
                 type: string
+              certificates:
+                description: Certificates for nodes, quantity, should correlate to
+                  nodeCount
+                items:
+                  properties:
+                    cert:
+                      type: string
+                    key:
+                      type: string
+                  required:
+                  - cert
+                  - key
+                  type: object
+                type: array
               deploymentName:
                 default: test-validator
                 description: Prefix,used for kubernetes objects during creation
@@ -146,10 +160,26 @@ spec:
                   - name
                   type: object
                 type: array
+              genesis:
+                description: Genesis for nodes, that will be attached to existing
+                  network
+                type: string
               image:
                 default: avaplatform/avalanchego
                 description: Docker image name. Will be used in chain deployments
                 type: string
+              imagePullSecrets:
+                description: Specify docker hub secret
+                items:
+                  description: LocalObjectReference contains enough information to
+                    let you locate the referenced object inside the same namespace.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  type: object
+                type: array
               nodeCount:
                 default: 5
                 description: Number of nodes to create. All the nodes will be created
@@ -193,12 +223,20 @@ spec:
               bootstrapperURL:
                 description: Service URL of the Bootstrapper node
                 type: string
+              error:
+                description: String to indicate a logical error
+                type: string
+              genesis:
+                description: genesis.json
+                type: string
               networkMembersURI:
+                description: Node services list
                 items:
                   type: string
                 type: array
             required:
             - bootstrapperURL
+            - genesis
             - networkMembersURI
             type: object
         type: object
