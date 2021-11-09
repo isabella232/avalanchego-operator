@@ -59,7 +59,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	l.Info("Started")
 	// Fetch the Avalanchego instance
 	instance := &chainv1alpha1.Avalanchego{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("Not found so maybe deleted")
@@ -105,7 +105,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	r.Status().Update(ctx, instance)
 
-	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript), l)
+	err = r.ensureConfigMap(ctx, req, instance, r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -114,7 +114,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
+			err = r.ensureSecret(ctx, req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -123,31 +123,31 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			tempCert := string(bytes)
 			bytes, _ = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
 			tempKey := string(bytes)
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), tempCert, tempKey, instance.Spec.Genesis), l)
+			err = r.ensureSecret(ctx, req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), tempCert, tempKey, instance.Spec.Genesis), l)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		default:
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), "", "", instance.Spec.Genesis), l)
+			err = r.ensureSecret(ctx, req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), "", "", instance.Spec.Genesis), l)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
 		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		err = r.ensureService(req, instance, r.avagoService(instance, serviceName), l)
+		err = r.ensureService(ctx, req, instance, r.avagoService(instance, serviceName), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(req, instance, r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensurePVC(ctx, req, instance, r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensureService(ctx, req, instance, r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
+		err = r.ensureStatefulSet(ctx, req, instance, r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
