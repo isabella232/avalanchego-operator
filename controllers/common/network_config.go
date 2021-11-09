@@ -43,12 +43,19 @@ type KeyPair struct {
 	Id   string
 }
 
-func NewNetwork(networkSize int) *Network {
-	var n Network
-	g := Genesis{}
-	json.Unmarshal([]byte(localGenesisConfigJSON), &g)
+func NewNetwork(networkSize int) (Network, error) {
+	var (
+		g Genesis
+		n Network
+	)
+	if err := json.Unmarshal([]byte(localGenesisConfigJSON), &g); err != nil {
+		return Network{}, fmt.Errorf("couldn't unmarshal local genesis: %w", err)
+	}
 	for i := 0; i < networkSize; i++ {
-		cert, key, id, _ := newCertKeyIdString()
+		cert, key, id, err := newCertKeyIdString()
+		if err != nil {
+			return Network{}, fmt.Errorf("couldn't create new vkey/cert: %w", err)
+		}
 		fmt.Print("------------------------------------------")
 		fmt.Print(cert)
 		fmt.Print("------------------------------------------")
@@ -58,13 +65,16 @@ func NewNetwork(networkSize int) *Network {
 		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
-	data, _ := json.Marshal(g)
-	n.Genesis = string(data)
+	genesisBytes, err := json.Marshal(g)
+	if err != nil {
+		return Network{}, fmt.Errorf("couldn't marshal local genesis: %w", err)
+	}
+	n.Genesis = string(genesisBytes)
 
 	fmt.Print("------------------------------------------")
 	fmt.Print(n.Genesis)
 
-	return &n
+	return n, nil
 }
 
 func newCertKeyIdString() (string, string, string, error) {

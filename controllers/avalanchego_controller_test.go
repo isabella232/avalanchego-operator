@@ -22,7 +22,6 @@ var _ = Describe("Avalanchego controller", func() {
 		AvalanchegoAPIVersion = "chain.avax.network/v1alpha1"
 
 		timeout  = time.Second * 10
-		duration = time.Second * 10
 		interval = time.Millisecond * 250
 	)
 
@@ -62,7 +61,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			Eventually(func() bool {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), key, f)
+				_ = k8sClient.Get(context.Background(), key, f)
 				return f.Status.Error == ""
 			}, timeout, interval).Should(BeTrue())
 
@@ -71,7 +70,7 @@ var _ = Describe("Avalanchego controller", func() {
 			fetched := &chainv1alpha1.Avalanchego{}
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), key, fetched)
+				_ = k8sClient.Get(context.Background(), key, fetched)
 				return fetched.Spec.NodeCount == len(fetched.Status.NetworkMembersURI)
 			}, timeout, interval).Should(BeTrue())
 
@@ -82,7 +81,7 @@ var _ = Describe("Avalanchego controller", func() {
 			By("Deleting the scope")
 			Eventually(func() error {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), key, f)
+				_ = k8sClient.Get(context.Background(), key, f)
 				return k8sClient.Delete(context.Background(), f)
 			}, timeout, interval).Should(Succeed())
 

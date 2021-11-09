@@ -49,7 +49,7 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 		},
 		Data: data,
 	}
-	controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, cm, r.Scheme) // TODO should we return this error if non-nil?
 	return cm
 }
 
@@ -79,7 +79,7 @@ func (r *AvalanchegoReconciler) avagoSecret(
 			"genesis.json": genesis,
 		},
 	}
-	controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, secr, r.Scheme) // TODO should we return this error if non-nil?
 	return secr
 }
 
@@ -118,7 +118,7 @@ func (r *AvalanchegoReconciler) avagoService(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, svc, r.Scheme) // TODO should we return this error if non-nil?
 	return svc
 }
 
@@ -147,7 +147,7 @@ func (r *AvalanchegoReconciler) avagoPVC(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, pvc, r.Scheme) // TODO should we return this error if non-nil?
 	return pvc
 }
 
@@ -250,7 +250,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 		sts.Spec.Template.Spec.Containers[0].Resources = instance.Spec.Resources
 	}
 
-	controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, sts, r.Scheme) // TODO should we return this error if non-nil?
 	return sts
 }
 

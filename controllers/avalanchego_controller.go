@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -78,7 +79,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if (len(instance.Spec.Certificates) > 0) && (len(instance.Spec.Certificates) != instance.Spec.NodeCount) {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
 		instance.Status.Error = err.Error()
-		r.Status().Update(ctx, instance)
+		if err := r.Status().Update(ctx, instance); err != nil {
+			l.Error(err, "error calling Update")
+		}
 		return ctrl.Result{}, err
 	}
 	//Clean up env vars
@@ -91,7 +94,11 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
-		network = *common.NewNetwork(instance.Spec.NodeCount)
+		var err error
+		network, err = common.NewNetwork(instance.Spec.NodeCount)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("couldn't make new network")
+		}
 	}
 
 	if instance.Spec.BootstrapperURL == "" {
@@ -103,8 +110,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
 		instance.Status.Genesis = instance.Spec.Genesis
 	}
-	r.Status().Update(ctx, instance)
-
+	_ = r.Status().Update(ctx, instance) // TODO should we return this error if non-nil?
 	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript), l)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -154,7 +160,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		if notContainsS(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service") {
 			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service")
-			r.Status().Update(ctx, instance)
+			_ = r.Status().Update(ctx, instance) // TODO should we return this error if non-nil?
 		}
 
 	}
