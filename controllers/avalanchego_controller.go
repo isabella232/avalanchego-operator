@@ -80,7 +80,8 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		r.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
 	}
-	//Clean up env vars
+
+	// Ignore these environment variables if given
 	for i, v := range instance.Spec.Env {
 		switch v.Name {
 		case "AVAGO_PUBLIC_IP", "AVAGO_STAKING_TLS_CERT_FILE", "AVAGO_STAKING_TLS_KEY_FILE", "AVAGO_DB_DIR":
@@ -95,7 +96,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if instance.Spec.BootstrapperURL == "" {
-		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+		instance.Status.BootstrapperURL = avaGoPrefix + instance.Spec.DeploymentName + "-0-service"
 		if network.Genesis != "" {
 			instance.Status.Genesis = network.Genesis
 		}
@@ -108,7 +109,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := r.ensureConfigMap(
 		req,
 		instance,
-		r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript),
+		r.avagoConfigMap(instance, avaGoPrefix+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript),
 		l,
 	); err != nil {
 		return ctrl.Result{}, err
@@ -193,8 +194,8 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
-		if notContainsS(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service") {
-			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service")
+		if notContainsS(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service") {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
 	}
