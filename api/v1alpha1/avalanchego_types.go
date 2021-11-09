@@ -43,6 +43,14 @@ type AvalanchegoSpec struct {
 	// +optional
 	BootstrapperURL string `json:"bootstrapperURL,omitempty"`
 
+	// Genesis for nodes, that will be attached to existing network
+	// +optional
+	Genesis string `json:"genesis,omitempty"`
+
+	// Certificates for nodes, quantity, should correlate to nodeCount
+	// +optional
+	Certificates []Certificate `json:"certificates,omitempty"`
+
 	// Docker image name. Will be used in chain deployments
 	// +optional
 	// +kubebuilder:default:="avaplatform/avalanchego"
@@ -60,6 +68,15 @@ type AvalanchegoSpec struct {
 	// Resources (requests and limits of CPU and RAM) for the Avalanchego instances
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	//Specify docker hub secret
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+}
+
+type Certificate struct {
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
 }
 
 // AvalanchegoStatus defines the observed state of Avalanchego
@@ -68,8 +85,16 @@ type AvalanchegoStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Service URL of the Bootstrapper node
-	BootstrapperURL   string   `json:"bootstrapperURL"`
+	BootstrapperURL string `json:"bootstrapperURL"`
+
+	// Node services list
 	NetworkMembersURI []string `json:"networkMembersURI"`
+
+	// genesis.json
+	Genesis string `json:"genesis"`
+
+	//String to indicate a logical error
+	Error string `json:"error,omitempty"`
 }
 
 //+kubebuilder:object:root=true
