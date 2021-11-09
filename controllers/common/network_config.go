@@ -46,7 +46,7 @@ type KeyPair struct {
 func NewNetwork(networkSize int) *Network {
 	var n Network
 	g := Genesis{}
-	json.Unmarshal([]byte(localGenesisConfigJSON), &g)
+	json.Unmarshal([]byte(defaultGenesisConfigJSON), &g)
 	for i := 0; i < networkSize; i++ {
 		cert, key, id, _ := newCertKeyIdString()
 		fmt.Print("------------------------------------------")
