@@ -59,7 +59,6 @@ func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
 }
 
 func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
 	s *corev1.Secret,
 	l logr.Logger,
 ) error {
@@ -89,7 +88,6 @@ func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
 
 func (r *AvalanchegoReconciler) ensureService(
 	req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
 	s *corev1.Service,
 	l logr.Logger,
 ) error {
@@ -119,7 +117,6 @@ func (r *AvalanchegoReconciler) ensureService(
 
 func (r *AvalanchegoReconciler) ensurePVC(
 	req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
 	s *corev1.PersistentVolumeClaim,
 	l logr.Logger,
 ) error {
@@ -149,7 +146,6 @@ func (r *AvalanchegoReconciler) ensurePVC(
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
 	req ctrl.Request,
-	instance *chainv1alpha1.Avalanchego,
 	s *appsv1.StatefulSet,
 	l logr.Logger,
 ) error {
