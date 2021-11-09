@@ -71,11 +71,10 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	var network common.Network
 
 	//Pre flight checks
 	//Number of certs should match nodeCount
-	if (len(instance.Spec.Certificates) > 0) && (len(instance.Spec.Certificates) != instance.Spec.NodeCount) {
+	if len(instance.Spec.Certificates) > 0 && len(instance.Spec.Certificates) != instance.Spec.NodeCount {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
 		instance.Status.Error = err.Error()
 		r.Status().Update(ctx, instance)
@@ -83,13 +82,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	//Clean up env vars
 	for i, v := range instance.Spec.Env {
-		if (v.Name == "AVAGO_PUBLIC_IP") || (v.Name == "AVAGO_STAKING_TLS_CERT_FILE") || (v.Name == "AVAGO_STAKING_TLS_KEY_FILE") || (v.Name == "AVAGO_DB_DIR") {
+		switch v.Name {
+		case "AVAGO_PUBLIC_IP", "AVAGO_STAKING_TLS_CERT_FILE", "AVAGO_STAKING_TLS_KEY_FILE", "AVAGO_DB_DIR":
 			instance.Spec.Env[i] = instance.Spec.Env[len(instance.Spec.Env)-1]
 			instance.Spec.Env = instance.Spec.Env[:len(instance.Spec.Env)-1]
 		}
-
 	}
 
+	var network common.Network
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
 		network = *common.NewNetwork(instance.Spec.NodeCount)
 	}
@@ -115,7 +115,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
-
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			if err := r.ensureSecret(
@@ -198,9 +197,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service")
 			r.Status().Update(ctx, instance)
 		}
-
 	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -217,6 +214,5 @@ func notContainsS(s []string, str string) bool {
 			return false
 		}
 	}
-
 	return true
 }
