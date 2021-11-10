@@ -58,7 +58,10 @@ func NewNetwork(networkSize int) *Network {
 		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
-	data, _ := json.Marshal(g)
+	data, err := json.Marshal(g)
+	if err != nil {
+		panic("Error: cannot marshal genesis.json, common package is invalid")
+	}
 	n.Genesis = string(data)
 
 	fmt.Print("------------------------------------------")

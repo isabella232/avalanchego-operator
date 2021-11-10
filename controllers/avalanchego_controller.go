@@ -119,9 +119,19 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
-			bytes, _ := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
+			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
+			if err != nil {
+				instance.Status.Error = err.Error()
+				r.Status().Update(ctx, instance)
+				return ctrl.Result{}, err
+			}
 			tempCert := string(bytes)
-			bytes, _ = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
+			bytes, err = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
+			if err != nil {
+				instance.Status.Error = err.Error()
+				r.Status().Update(ctx, instance)
+				return ctrl.Result{}, err
+			}
 			tempKey := string(bytes)
 			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), tempCert, tempKey, instance.Spec.Genesis), l)
 			if err != nil {
