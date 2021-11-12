@@ -60,7 +60,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	l.Info("Started")
 	// Fetch the Avalanchego instance
 	instance := &chainv1alpha1.Avalanchego{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("Not found so maybe deleted")
@@ -114,6 +114,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	_ = r.Status().Update(ctx, instance)
 
 	if err := r.ensureConfigMap(
+		ctx,
 		req,
 		instance,
 		r.avagoConfigMap(instance, avaGoPrefix+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript),
@@ -126,7 +127,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			if err := r.ensureSecret(
+				ctx,
 				req,
+				instance,
 				r.avagoSecret(
 					instance,
 					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
@@ -154,7 +157,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 			tempKey := string(bytes)
 			if err := r.ensureSecret(
+				ctx,
 				req,
+				instance,
 				r.avagoSecret(
 					instance,
 					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
@@ -168,7 +173,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 		default:
 			if err := r.ensureSecret(
+				ctx,
 				req,
+				instance,
 				r.avagoSecret(
 					instance,
 					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
@@ -183,6 +190,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
 		if err := r.ensureService(
+			ctx,
 			req,
 			r.avagoService(instance, serviceName),
 			l,
@@ -190,6 +198,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 		if err := r.ensurePVC(
+			ctx,
 			req,
 			r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
@@ -197,6 +206,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 		if err := r.ensureService(
+			ctx,
 			req,
 			r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
@@ -204,6 +214,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 		if err := r.ensureStatefulSet(
+			ctx,
 			req,
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,

@@ -29,13 +29,15 @@ import (
 	"github.com/go-logr/logr"
 )
 
-func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
+func (r *AvalanchegoReconciler) ensureConfigMap(
+	ctx context.Context,
+	req ctrl.Request,
 	instance *chainv1alpha1.Avalanchego,
 	s *corev1.ConfigMap,
 	l logr.Logger,
 ) error {
 	found := &corev1.ConfigMap{}
-	err := r.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(ctx, types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
@@ -58,12 +60,15 @@ func (r *AvalanchegoReconciler) ensureConfigMap(req ctrl.Request,
 	return nil
 }
 
-func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
+func (r *AvalanchegoReconciler) ensureSecret(
+	ctx context.Context,
+	req ctrl.Request,
+	instance *chainv1alpha1.Avalanchego,
 	s *corev1.Secret,
 	l logr.Logger,
 ) error {
 	found := &corev1.Secret{}
-	err := r.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(ctx, types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
@@ -87,12 +92,13 @@ func (r *AvalanchegoReconciler) ensureSecret(req ctrl.Request,
 }
 
 func (r *AvalanchegoReconciler) ensureService(
+	ctx context.Context,
 	req ctrl.Request,
 	s *corev1.Service,
 	l logr.Logger,
 ) error {
 	found := &corev1.Service{}
-	err := r.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(ctx, types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
@@ -116,12 +122,13 @@ func (r *AvalanchegoReconciler) ensureService(
 }
 
 func (r *AvalanchegoReconciler) ensurePVC(
+	ctx context.Context,
 	req ctrl.Request,
 	s *corev1.PersistentVolumeClaim,
 	l logr.Logger,
 ) error {
 	found := &corev1.PersistentVolumeClaim{}
-	err := r.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(ctx, types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
@@ -145,12 +152,13 @@ func (r *AvalanchegoReconciler) ensurePVC(
 }
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
+	ctx context.Context,
 	req ctrl.Request,
 	s *appsv1.StatefulSet,
 	l logr.Logger,
 ) error {
 	found := &appsv1.StatefulSet{}
-	err := r.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(ctx, types.NamespacedName{
 		Name:      s.ObjectMeta.Name,
 		Namespace: s.ObjectMeta.Namespace,
 	}, found)
