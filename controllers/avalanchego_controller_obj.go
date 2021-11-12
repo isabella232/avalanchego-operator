@@ -44,12 +44,12 @@ func (r *AvalanchegoReconciler) avagoConfigMap(
 			Name:      name,
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 		},
 		Data: data,
 	}
-	controllerutil.SetControllerReference(instance, cm, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, cm, r.Scheme) // TODO should we return this error if non-nil?
 	return cm
 }
 
@@ -66,10 +66,10 @@ func (r *AvalanchegoReconciler) avagoSecret(
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-key",
+			Name:      avaGoPrefix + name + "-key",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 		},
 		Type: "Opaque",
@@ -79,7 +79,7 @@ func (r *AvalanchegoReconciler) avagoSecret(
 			"genesis.json": genesis,
 		},
 	}
-	controllerutil.SetControllerReference(instance, secr, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, secr, r.Scheme) // TODO should we return this error if non-nil?
 	return secr
 }
 
@@ -93,16 +93,16 @@ func (r *AvalanchegoReconciler) avagoService(
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-service",
+			Name:      avaGoPrefix + name + "-service",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "None",
 			Selector: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -118,7 +118,7 @@ func (r *AvalanchegoReconciler) avagoService(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, svc, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, svc, r.Scheme) // TODO should we return this error if non-nil?
 	return svc
 }
 
@@ -132,10 +132,10 @@ func (r *AvalanchegoReconciler) avagoPVC(
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name + "-pvc",
+			Name:      avaGoPrefix + name + "-pvc",
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -147,7 +147,7 @@ func (r *AvalanchegoReconciler) avagoPVC(
 			},
 		},
 	}
-	controllerutil.SetControllerReference(instance, pvc, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, pvc, r.Scheme) // TODO should we return this error if non-nil?
 	return pvc
 }
 
@@ -182,10 +182,10 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "avago-" + name,
+			Name:      avaGoPrefix + name,
 			Namespace: instance.Namespace,
 			Labels: map[string]string{
-				"app": "avago-" + name,
+				"app": avaGoPrefix + name,
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -194,14 +194,14 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			PodManagementPolicy: "OrderedReady",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "avago-" + name,
+					"app": avaGoPrefix + name,
 				},
 			},
-			ServiceName: "avago-" + name + "-service",
+			ServiceName: avaGoPrefix + name + "-service",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "avago-" + name,
+						"app": avaGoPrefix + name,
 					},
 					//TODO Add checksum for cert/key
 				},
@@ -250,7 +250,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 		sts.Spec.Template.Spec.Containers[0].Resources = instance.Spec.Resources
 	}
 
-	controllerutil.SetControllerReference(instance, sts, r.Scheme)
+	_ = controllerutil.SetControllerReference(instance, sts, r.Scheme) // TODO should we return this error if non-nil?
 	return sts
 }
 
@@ -352,21 +352,20 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 	return envVars
 }
 
-//Returns -1 if not found, index otherwise
+// Returns -1 if not found, index otherwise
 func indexOf(env []corev1.EnvVar, name string) int {
 	for i, v := range env {
 		if v.Name == name {
 			return i
 		}
 	}
-
 	return -1
 }
 
 func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanchego, name string) []corev1.VolumeMount {
-	volumeMounts := []corev1.VolumeMount{
+	return []corev1.VolumeMount{
 		{
-			Name:      "avago-db-" + name,
+			Name:      avaGoPrefix + "db-" + name,
 			MountPath: "/root/.avalanchego",
 			ReadOnly:  false,
 		},
@@ -376,22 +375,20 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 			ReadOnly:  true,
 		},
 		{
-			Name:      "avago-cert-" + name,
+			Name:      avaGoPrefix + "cert-" + name,
 			MountPath: "/etc/avalanchego/st-certs",
 			ReadOnly:  true,
 		},
 	}
-
-	return volumeMounts
 }
 
 func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, name string) []corev1.Volume {
-	volumes := []corev1.Volume{
+	return []corev1.Volume{
 		{
-			Name: "avago-db-" + name,
+			Name: avaGoPrefix + "db-" + name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "avago-" + name + "-pvc",
+					ClaimName: avaGoPrefix + name + "-pvc",
 				},
 			},
 		},
@@ -400,7 +397,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "avago-" + instance.Spec.DeploymentName + "init-script",
+						Name: avaGoPrefix + instance.Spec.DeploymentName + "init-script",
 					},
 					// A hack to create a literal *int32 vatiable, set to 0777
 					DefaultMode: &[]int32{0777}[0],
@@ -414,14 +411,12 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			},
 		},
 		{
-			Name: "avago-cert-" + name,
+			Name: avaGoPrefix + "cert-" + name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "avago-" + name + "-key",
+					SecretName: avaGoPrefix + name + "-key",
 				},
 			},
 		},
 	}
-
-	return volumes
 }
