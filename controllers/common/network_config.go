@@ -37,10 +37,14 @@ type KeyPair struct {
 	Id   string
 }
 
-func NewNetwork(networkSize int) *Network {
-	var n Network
-	g := Genesis{}
-	json.Unmarshal([]byte(defaultGenesisConfigJSON), &g)
+func NewNetwork(networkSize int) (Network, error) {
+	var (
+		g Genesis
+		n Network
+	)
+	if err := json.Unmarshal([]byte(defaultGenesisConfigJSON), &g); err != nil {
+		return Network{}, fmt.Errorf("couldn't unmarshal local genesis: %w", err)
+	}
 	for i := 0; i < networkSize; i++ {
 		// TODO handle the below error
 		stakingKeyCertPair, _ := newStakingKeyCertPair()
@@ -53,16 +57,16 @@ func NewNetwork(networkSize int) *Network {
 		n.KeyPairs = append(n.KeyPairs, stakingKeyCertPair)
 		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: stakingKeyCertPair.Id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
-	data, err := json.Marshal(g)
+	genesisBytes, err := json.Marshal(g)
 	if err != nil {
 		panic("Error: cannot marshal genesis.json, common package is invalid")
 	}
-	n.Genesis = string(data)
+	n.Genesis = string(genesisBytes)
 
 	fmt.Print("------------------------------------------")
 	fmt.Print(n.Genesis)
 
-	return &n
+	return n, nil
 }
 
 func newStakingKeyCertPair() (KeyPair, error) {
