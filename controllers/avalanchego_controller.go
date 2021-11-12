@@ -72,11 +72,10 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	var network common.Network
 
 	//Pre flight checks
 	//Number of certs should match nodeCount
-	if (len(instance.Spec.Certificates) > 0) && (len(instance.Spec.Certificates) != instance.Spec.NodeCount) {
+	if len(instance.Spec.Certificates) > 0 && len(instance.Spec.Certificates) != instance.Spec.NodeCount {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
 		instance.Status.Error = err.Error()
 		if err := r.Status().Update(ctx, instance); err != nil {
@@ -84,15 +83,17 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		return ctrl.Result{}, err
 	}
-	//Clean up env vars
+
+	// Ignore these environment variables if given
 	for i, v := range instance.Spec.Env {
-		if (v.Name == "AVAGO_PUBLIC_IP") || (v.Name == "AVAGO_STAKING_TLS_CERT_FILE") || (v.Name == "AVAGO_STAKING_TLS_KEY_FILE") || (v.Name == "AVAGO_DB_DIR") {
+		switch v.Name {
+		case "AVAGO_PUBLIC_IP", "AVAGO_STAKING_TLS_CERT_FILE", "AVAGO_STAKING_TLS_KEY_FILE", "AVAGO_DB_DIR":
 			instance.Spec.Env[i] = instance.Spec.Env[len(instance.Spec.Env)-1]
 			instance.Spec.Env = instance.Spec.Env[:len(instance.Spec.Env)-1]
 		}
-
 	}
 
+	var network common.Network
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
 		var err error
 		network, err = common.NewNetwork(instance.Spec.NodeCount)
@@ -102,7 +103,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if instance.Spec.BootstrapperURL == "" {
-		instance.Status.BootstrapperURL = "avago-" + instance.Spec.DeploymentName + "-0-service"
+		instance.Status.BootstrapperURL = avaGoPrefix + instance.Spec.DeploymentName + "-0-service"
 		if network.Genesis != "" {
 			instance.Status.Genesis = network.Genesis
 		}
@@ -110,61 +111,111 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
 		instance.Status.Genesis = instance.Spec.Genesis
 	}
-	_ = r.Status().Update(ctx, instance) // TODO should we return this error if non-nil?
-	err = r.ensureConfigMap(req, instance, r.avagoConfigMap(instance, "avago-"+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript), l)
-	if err != nil {
+	_ = r.Status().Update(ctx, instance)
+
+	if err := r.ensureConfigMap(
+		req,
+		instance,
+		r.avagoConfigMap(instance, avaGoPrefix+instance.Spec.DeploymentName+"init-script", common.AvagoBootstraperFinderScript),
+		l,
+	); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
-
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), network.KeyPairs[i].Cert, network.KeyPairs[i].Key, network.Genesis), l)
-			if err != nil {
+			if err := r.ensureSecret(
+				req,
+				r.avagoSecret(
+					instance,
+					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
+					network.KeyPairs[i].Cert,
+					network.KeyPairs[i].Key,
+					network.Genesis,
+				),
+				l,
+			); err != nil {
 				return ctrl.Result{}, err
 			}
 		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
-			bytes, _ := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
-			tempCert := string(bytes)
-			bytes, _ = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
-			tempKey := string(bytes)
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), tempCert, tempKey, instance.Spec.Genesis), l)
+			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
 			if err != nil {
+				instance.Status.Error = err.Error()
+				r.Status().Update(ctx, instance)
+				return ctrl.Result{}, err
+			}
+			tempCert := string(bytes)
+			bytes, err = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
+			if err != nil {
+				instance.Status.Error = err.Error()
+				r.Status().Update(ctx, instance)
+				return ctrl.Result{}, err
+			}
+			tempKey := string(bytes)
+			if err := r.ensureSecret(
+				req,
+				r.avagoSecret(
+					instance,
+					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
+					tempCert,
+					tempKey,
+					instance.Spec.Genesis,
+				),
+				l,
+			); err != nil {
 				return ctrl.Result{}, err
 			}
 		default:
-			err = r.ensureSecret(req, instance, r.avagoSecret(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), "", "", instance.Spec.Genesis), l)
-			if err != nil {
+			if err := r.ensureSecret(
+				req,
+				r.avagoSecret(
+					instance,
+					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
+					"",
+					"",
+					instance.Spec.Genesis,
+				), l,
+			); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
 		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		err = r.ensureService(req, instance, r.avagoService(instance, serviceName), l)
-		if err != nil {
+		if err := r.ensureService(
+			req,
+			r.avagoService(instance, serviceName),
+			l,
+		); err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePVC(req, instance, r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
-		if err != nil {
+		if err := r.ensurePVC(
+			req,
+			r.avagoPVC(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
+			l,
+		); err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureService(req, instance, r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
-		if err != nil {
+		if err := r.ensureService(
+			req,
+			r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
+			l,
+		); err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensureStatefulSet(req, instance, r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)), l)
-		if err != nil {
+		if err := r.ensureStatefulSet(
+			req,
+			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
+			l,
+		); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if notContainsS(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service") {
-			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, "avago-"+serviceName+"-service")
-			_ = r.Status().Update(ctx, instance) // TODO should we return this error if non-nil?
+		if notContainsS(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service") {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service")
+			_ = r.Status().Update(ctx, instance)
 		}
-
 	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -181,6 +232,5 @@ func notContainsS(s []string, str string) bool {
 			return false
 		}
 	}
-
 	return true
 }

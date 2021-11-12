@@ -17,17 +17,11 @@ limitations under the License.
 package common
 
 import (
-	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"math/big"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/hashing"
 )
@@ -48,26 +42,24 @@ func NewNetwork(networkSize int) (Network, error) {
 		g Genesis
 		n Network
 	)
-	if err := json.Unmarshal([]byte(localGenesisConfigJSON), &g); err != nil {
+	if err := json.Unmarshal([]byte(defaultGenesisConfigJSON), &g); err != nil {
 		return Network{}, fmt.Errorf("couldn't unmarshal local genesis: %w", err)
 	}
 	for i := 0; i < networkSize; i++ {
-		cert, key, id, err := newCertKeyIdString()
-		if err != nil {
-			return Network{}, fmt.Errorf("couldn't create new vkey/cert: %w", err)
-		}
+		// TODO handle the below error
+		stakingKeyCertPair, _ := newStakingKeyCertPair()
 		fmt.Print("------------------------------------------")
-		fmt.Print(cert)
+		fmt.Print(stakingKeyCertPair.Cert)
 		fmt.Print("------------------------------------------")
-		fmt.Print(key)
+		fmt.Print(stakingKeyCertPair.Key)
 		fmt.Print("------------------------------------------")
-		fmt.Print(id)
-		n.KeyPairs = append(n.KeyPairs, KeyPair{Cert: cert, Key: key, Id: id})
-		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
+		fmt.Print(stakingKeyCertPair.Id)
+		n.KeyPairs = append(n.KeyPairs, stakingKeyCertPair)
+		g.InitialStakers = append(g.InitialStakers, InitialStaker{NodeID: stakingKeyCertPair.Id, RewardAddress: g.Allocations[1].AvaxAddr, DelegationFee: 5000})
 	}
 	genesisBytes, err := json.Marshal(g)
 	if err != nil {
-		return Network{}, fmt.Errorf("couldn't marshal local genesis: %w", err)
+		panic("Error: cannot marshal genesis.json, common package is invalid")
 	}
 	n.Genesis = string(genesisBytes)
 
@@ -77,46 +69,19 @@ func NewNetwork(networkSize int) (Network, error) {
 	return n, nil
 }
 
-func newCertKeyIdString() (string, string, string, error) {
-	// Create key to sign cert with
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+func newStakingKeyCertPair() (KeyPair, error) {
+	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
 	if err != nil {
-		return "", "", "", fmt.Errorf("couldn't generate rsa key: %w", err)
+		return KeyPair{}, err
 	}
-
-	// Create self-signed staking cert
-	certTemplate := &x509.Certificate{
-		SerialNumber:          big.NewInt(0),
-		NotBefore:             time.Date(2020, time.January, 0, 0, 0, 0, 0, time.UTC),
-		NotAfter:              time.Now().AddDate(100, 0, 0),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageDataEncipherment,
-		BasicConstraintsValid: true,
-	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, &key.PublicKey, key)
+	nodeID, err := ids.ToShortID(hashing.PubkeyBytesToAddress(certBytes))
 	if err != nil {
-		return "", "", "", fmt.Errorf("couldn't create certificate: %w", err)
+		return KeyPair{}, fmt.Errorf("problem deriving node ID from certificate: %w", err)
 	}
-
-	var certBuff bytes.Buffer
-	if err := pem.Encode(&certBuff, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes}); err != nil {
-		return "", "", "", fmt.Errorf("couldn't write cert file: %w", err)
-	}
-
-	privBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return "", "", "", fmt.Errorf("couldn't marshal private key: %w", err)
-	}
-
-	var keyBuff bytes.Buffer
-	if err := pem.Encode(&keyBuff, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return "", "", "", fmt.Errorf("couldn't write private key: %w", err)
-	}
-
-	id, err := ids.ToShortID(hashing.PubkeyBytesToAddress(certBytes))
-	if err != nil {
-		return "", "", "", fmt.Errorf("problem deriving node ID from certificate: %w", err)
-	}
-	fullId := id.PrefixedString(constants.NodeIDPrefix)
-
-	return certBuff.String(), keyBuff.String(), fullId, nil
+	nodeIDStr := nodeID.PrefixedString(constants.NodeIDPrefix)
+	return KeyPair{
+		Cert: string(certBytes),
+		Key:  string(keyBytes),
+		Id:   nodeIDStr,
+	}, nil
 }
