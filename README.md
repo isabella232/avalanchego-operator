@@ -115,6 +115,38 @@ spec:
 
 For fully custom deployment see `config/samples/chain_v1alpha1_avalanchego_static.yaml`
 
+## Exposing an Avalanchego node
+To expose a node to external networks (Internet), please create an ingress object (namnespace should match)
+Example:
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  name: avago-test-val-0-ing
+spec:
+  rules:
+  # URI
+  - host: avago-test-val-0.avax-dev.network
+    http:
+      paths:
+      - backend:
+          service:
+            # Service name, get it from the status
+            name: avago-test-val-0-service
+            port:
+              number: 9650
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - avago-test-val-0.avax-dev.network
+    # pre created in integration cluster
+    secretName: cloudflare-avax-dev-tls
+```
 ## Developing
 This operator was created with operator-SDK (https://sdk.operatorframework.io/docs/)
 Please, read the docs before committing any changes.
