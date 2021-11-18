@@ -1,0 +1,46 @@
+# This workflow lints the tests.
+# It runs when a change is pushed.
+
+name: CI/CD
+on:
+  [push]
+jobs:
+  test:
+    name: CI/CD
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        name: Configure accces to private repos for golang
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: 'v1.42'
+          working-directory: .
+          args: --timeout 3m
+      - name: Check, if versions in Makefile and ./config/manager/kustomization.yaml are the same
+        run: |
+          if [[ $(cat ./Makefile | grep "VERSION ?=" | cut -d " " -f3) = $(cat ./config/manager/kustomization.yaml | grep "newTag" | cut -d " " -f4) ]]; then
+            echo "Versions in Makefile and ./config/manager/kustomization.yaml are the same"
+          else
+            echo "Versions in Makefile and ./config/manager/kustomization.yaml are NOT the same, run make docker-set-image localy and push the changes"
+            exit 1
+          fi
+      - name: Run integration tests and build docker image
+        env:
+          DOCKER_USERNAME: ${{ secrets.docker_username }}
+          DOCKER_PASS: ${{ secrets.docker_pass }}
+        run: |
+          echo "$DOCKER_PASS" | docker login --username "$DOCKER_USERNAME" --password-stdin
+          docker system prune -af
+          make docker-build
+      - name: Check, if CRDs were updated
+        run: |
+          pwd
+          if [[ `git status --porcelain` ]]; then
+            echo Generate CRDs with make generate and push the changes
+          fi
+          

@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.2.1
+VERSION ?= 0.2.2
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -98,11 +98,21 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
-docker-build: test ## Build docker image with the manager.
+docker-set-image: kustomize ## Sets the image in manifests
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+
+docker-check-image: ##Check if an image already exist in remote repo 
+ifeq ($(shell docker pull ${IMG} &>/dev/null; echo $$?),0)
+	$(error ${IMG} is present in remote repo. Update VERSION in Makefile)
+else
+	$(info ${IMG} is not present in remote repo)
+endif
+
+docker-build: test docker-check-image docker-set-image ## Build docker image with the manager.
 	docker build -t ${IMG} .
 
-docker-push: kustomize ## Push docker image with the manager.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+docker-push: docker-check-image docker-set-image ## Push docker image with the manager.
+	docker build -t ${IMG} .
 	docker push ${IMG}
 
 ##@ Deployment

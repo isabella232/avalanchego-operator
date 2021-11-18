@@ -145,14 +145,18 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
 			if err != nil {
 				instance.Status.Error = err.Error()
-				r.Status().Update(ctx, instance)
+				if err := r.Status().Update(ctx, instance); err != nil {
+					l.Error(err, "error calling Update")
+				}
 				return ctrl.Result{}, err
 			}
 			tempCert := string(bytes)
 			bytes, err = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
 			if err != nil {
 				instance.Status.Error = err.Error()
-				r.Status().Update(ctx, instance)
+				if err := r.Status().Update(ctx, instance); err != nil {
+					l.Error(err, "error calling Update")
+				}
 				return ctrl.Result{}, err
 			}
 			tempKey := string(bytes)

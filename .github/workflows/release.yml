@@ -1,0 +1,19 @@
+name: Release
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test:
+    name: Release
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        name: Configure accces to private repos for golang
+      - name: Publish image to DockerHub
+        env:
+          DOCKER_USERNAME: ${{ secrets.docker_username }}
+          DOCKER_PASS: ${{ secrets.docker_pass }}
+        run: |
+          echo "$DOCKER_PASS" | docker login --username "$DOCKER_USERNAME" --password-stdin
+          make docker-push

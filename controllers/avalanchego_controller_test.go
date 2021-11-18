@@ -172,7 +172,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			Eventually(func() bool {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), keyBootstrapper, f)
+				_ = k8sClient.Get(context.Background(), keyBootstrapper, f)
 				return f.Status.Error == ""
 			}, timeout, interval).Should(BeTrue())
 
@@ -181,7 +181,7 @@ var _ = Describe("Avalanchego controller", func() {
 			fetchedBootstrapper := &chainv1alpha1.Avalanchego{}
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), keyBootstrapper, fetchedBootstrapper)
+				_ = k8sClient.Get(context.Background(), keyBootstrapper, fetchedBootstrapper)
 				return fetchedBootstrapper.Spec.NodeCount == len(fetchedBootstrapper.Status.NetworkMembersURI)
 			}, timeout, interval).Should(BeTrue())
 
@@ -192,7 +192,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			Eventually(func() bool {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), keyWorker, f)
+				_ = k8sClient.Get(context.Background(), keyWorker, f)
 				return f.Status.Error == ""
 			}, timeout, interval).Should(BeTrue())
 
@@ -201,14 +201,14 @@ var _ = Describe("Avalanchego controller", func() {
 			fetchedWorker := &chainv1alpha1.Avalanchego{}
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), keyWorker, fetchedWorker)
+				_ = k8sClient.Get(context.Background(), keyWorker, fetchedWorker)
 				return fetchedWorker.Spec.NodeCount == len(fetchedWorker.Status.NetworkMembersURI)
 			}, timeout, interval).Should(BeTrue())
 
 			By("Deleting the scope")
 			Eventually(func() error {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), keyBootstrapper, f)
+				_ = k8sClient.Get(context.Background(), keyBootstrapper, f)
 				return k8sClient.Delete(context.Background(), f)
 			}, timeout, interval).Should(Succeed())
 
@@ -219,7 +219,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			Eventually(func() error {
 				f := &chainv1alpha1.Avalanchego{}
-				k8sClient.Get(context.Background(), keyWorker, f)
+				_ = k8sClient.Get(context.Background(), keyWorker, f)
 				return k8sClient.Delete(context.Background(), f)
 			}, timeout, interval).Should(Succeed())
 
