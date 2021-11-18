@@ -3,7 +3,9 @@
 
 name: CI/CD
 on:
-  [push]
+  push:
+    branches-ignore:
+      - "main"
 jobs:
   test:
     name: CI/CD
