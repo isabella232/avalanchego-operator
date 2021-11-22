@@ -54,5 +54,5 @@ spec:
             memory: 200Mi
       serviceAccountName: controller-manager
       imagePullSecrets:
-        - name:  avalanchego-operator-dockerhub
+        - name: dockerhub
       terminationGracePeriodSeconds: 10
