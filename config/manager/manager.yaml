@@ -56,18 +56,3 @@ spec:
       imagePullSecrets:
         - name:  avalanchego-operator-dockerhub
       terminationGracePeriodSeconds: 10
----
-apiVersion: "kubernetes-client.io/v1"
-kind: ExternalSecret
-metadata:
-  name: dockerhub
-  namespace: default
-spec:
-  backendType: secretsManager
-  template:
-    type: kubernetes.io/dockerconfigjson
-  data:
-    - key: k8s/dockerhub
-      name: .dockerconfigjson
-      property: .dockerconfigjson_BASE64
-      isBinary: true
