@@ -26,8 +26,8 @@ var _ = Describe("Avalanchego controller", func() {
 		AvalanchegoKind       = "Avalanchego"
 		AvalanchegoAPIVersion = "chain.avax.network/v1alpha1"
 
-		timeout  = time.Second * 10
-		interval = time.Millisecond * 250
+		timeout  = time.Second * 60
+		interval = time.Millisecond * 500
 	)
 
 	Context("Empty bootstrapperURL, genesis and certificates", func() {
