@@ -18,8 +18,10 @@ var _ = Describe("Avalanchego controller", func() {
 		AvalanchegoNamespace               = "default"
 		AvalanchegoValidatorDeploymentName = "test-validator"
 
-		AvalanchegoWorkerName           = "avalanchego-test-worker"
-		AvalanchegoWorkerDeploymentName = "test-worker"
+		AvalanchegoWValidatorName           = "avalanchego-test-wvalidator"
+		AvalanchegowValidatorDeploymentName = "test-wvalidator"
+		AvalanchegoWorkerName               = "avalanchego-test-worker"
+		AvalanchegoWorkerDeploymentName     = "test-worker"
 
 		AvalanchegoKind       = "Avalanchego"
 		AvalanchegoAPIVersion = "chain.avax.network/v1alpha1"
@@ -100,7 +102,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			specBootstrapper := chainv1alpha1.AvalanchegoSpec{
 				Tag:            "v1.6.3",
-				DeploymentName: AvalanchegoValidatorDeploymentName,
+				DeploymentName: AvalanchegowValidatorDeploymentName,
 				NodeCount:      1,
 				Genesis:        `{"networkID":12346,"allocations":[{"ethAddr":"0xb3d82b1367d362de99ab59a658165aff520cbd4d","avaxAddr":"X-custom1g65uqn6t77p656w64023nh8nd9updzmxwd59gh","initialAmount":0,"unlockSchedule":[{"amount":10000000000000000,"locktime":1633824000}]},{"ethAddr":"0xb3d82b1367d362de99ab59a658165aff520cbd4d","avaxAddr":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","initialAmount":300000000000000000,"unlockSchedule":[{"amount":20000000000000000},{"amount":10000000000000000,"locktime":1633824000}]},{"ethAddr":"0xb3d82b1367d362de99ab59a658165aff520cbd4d","avaxAddr":"X-custom1ur873jhz9qnaqv5qthk5sn3e8nj3e0kmzpjrhp","initialAmount":10000000000000000,"unlockSchedule":[{"amount":10000000000000000,"locktime":1633824000}]}],"startTime":1630987200,"initialStakeDuration":31536000,"initialStakeDurationOffset":5400,"initialStakedFunds":["X-custom1g65uqn6t77p656w64023nh8nd9updzmxwd59gh"],"initialStakers":[{"nodeID":"NodeID-4XsLhvvKKgXyBqJbUS9V74eiGDbZf5HYy","rewardAddress":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","delegationFee":5000},{"nodeID":"NodeID-JqUCBkg87FYDvkiZNSG3hFt3pdsYbLtm4","rewardAddress":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","delegationFee":5000},{"nodeID":"NodeID-CvwPtxUScTomPZ6o8qhbqSHDRpaMhBD9w","rewardAddress":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","delegationFee":5000},{"nodeID":"NodeID-3mxMtWgHrWqHcPwEMEJwcS24kzLQbxort","rewardAddress":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","delegationFee":5000},{"nodeID":"NodeID-CYXgGSJ3VtU6NSRoroJoavVDW3S2DyccV","rewardAddress":"X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p","delegationFee":5000}],"cChainGenesis":"{\"config\":{\"chainId\":43112,\"homesteadBlock\":0,\"daoForkBlock\":0,\"daoForkSupport\":true,\"eip150Block\":0,\"eip150Hash\":\"0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0\",\"eip155Block\":0,\"eip158Block\":0,\"byzantiumBlock\":0,\"constantinopleBlock\":0,\"petersburgBlock\":0,\"istanbulBlock\":0,\"muirGlacierBlock\":0,\"apricotPhase1BlockTimestamp\":0,\"apricotPhase2BlockTimestamp\":0},\"nonce\":\"0x0\",\"timestamp\":\"0x0\",\"extraData\":\"0x00\",\"gasLimit\":\"0x5f5e100\",\"difficulty\":\"0x0\",\"mixHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"coinbase\":\"0x0000000000000000000000000000000000000000\",\"alloc\":{\"8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC\":{\"balance\":\"0x295BE96E64066972000000\"}},\"number\":\"0x0\",\"gasUsed\":\"0x0\",\"parentHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}","message":"Make time for fun"}`,
 				Certificates: []chainv1alpha1.Certificate{
@@ -117,7 +119,7 @@ var _ = Describe("Avalanchego controller", func() {
 				},
 			}
 			keyBootstrapper := types.NamespacedName{
-				Name:      AvalanchegoValidatorName,
+				Name:      AvalanchegoWValidatorName,
 				Namespace: AvalanchegoNamespace,
 			}
 			toCreateBootstrapper := &chainv1alpha1.Avalanchego{
