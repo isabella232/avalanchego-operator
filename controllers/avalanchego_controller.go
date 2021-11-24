@@ -87,7 +87,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// Ignore these environment variables if given
 	for i, v := range instance.Spec.Env {
 		switch v.Name {
-		case "AVAGO_PUBLIC_IP", "AVAGO_STAKING_TLS_CERT_FILE", "AVAGO_STAKING_TLS_KEY_FILE", "AVAGO_DB_DIR":
+		case "AVAGO_PUBLIC_IP", "AVAGO_HTTP_HOST", "AVAGO_STAKING_TLS_CERT_FILE", "AVAGO_STAKING_TLS_KEY_FILE", "AVAGO_DB_DIR", "AVAGO_STAKING_PORT", "AVAGO_GENESIS":
 			instance.Spec.Env[i] = instance.Spec.Env[len(instance.Spec.Env)-1]
 			instance.Spec.Env = instance.Spec.Env[:len(instance.Spec.Env)-1]
 		}
