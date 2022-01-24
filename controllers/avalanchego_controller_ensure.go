@@ -157,7 +157,7 @@ func upsertObject(
 		l.Error(err, "Failed to create new object", commonLogInfo...)
 		return existed, err
 	}
-	l.Info("Successfully created a new StatefulSet", commonLogInfo...)
+	l.Info("Successfully created a new object", commonLogInfo...)
 	// Creation was successful
 	return false, nil
 }
