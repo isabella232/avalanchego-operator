@@ -18,12 +18,16 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	"time"
 
+	//"time"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -36,28 +40,8 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 	s *corev1.ConfigMap,
 	l logr.Logger,
 ) error {
-	found := &corev1.ConfigMap{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      s.ObjectMeta.Name,
-		Namespace: s.ObjectMeta.Namespace,
-	}, found)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		// Error that isn't due to the ConfigMap not existing
-		l.Error(err, "Failed to get ConfigMap")
-		return err
-	}
-	// Create the ConfigMap
-	l.Info("Creating a new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-	if err := r.Create(context.TODO(), s); err != nil {
-		// Creation failed
-		l.Error(err, "Failed to create new ConfigMap", "ConfigMap.Namespace", s.Namespace, "ConfigMap.Name", s.Name)
-		return err
-	}
-	// Creation was successful
-	return nil
+	_, err := upsertObject(ctx, r, s, true, l)
+	return err
 }
 
 func (r *AvalanchegoReconciler) ensureSecret(
@@ -67,28 +51,8 @@ func (r *AvalanchegoReconciler) ensureSecret(
 	s *corev1.Secret,
 	l logr.Logger,
 ) error {
-	found := &corev1.Secret{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      s.ObjectMeta.Name,
-		Namespace: s.ObjectMeta.Namespace,
-	}, found)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		// Error that isn't due to the secret not existing
-		l.Error(err, "Failed to get Secret")
-		return err
-	}
-	// Create the secret
-	l.Info("Creating a new secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
-	if err := r.Create(context.TODO(), s); err != nil {
-		// Creation failed
-		l.Error(err, "Failed to create new Secret", "Secret.Namespace", s.Namespace, "Secret.Name", s.Name)
-		return err
-	}
-	// Creation was successful
-	return nil
+	_, err := upsertObject(ctx, r, s, false, l)
+	return err
 }
 
 func (r *AvalanchegoReconciler) ensureService(
@@ -97,28 +61,8 @@ func (r *AvalanchegoReconciler) ensureService(
 	s *corev1.Service,
 	l logr.Logger,
 ) error {
-	found := &corev1.Service{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      s.ObjectMeta.Name,
-		Namespace: s.ObjectMeta.Namespace,
-	}, found)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		// Error that isn't due to the secret not existing
-		l.Error(err, "Failed to get Service")
-		return err
-	}
-	// Create the service
-	l.Info("Creating a new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
-	if err := r.Create(context.TODO(), s); err != nil {
-		// Creation failed
-		l.Error(err, "Failed to create new Service", "Service.Namespace", s.Namespace, "Service.Name", s.Name)
-		return err
-	}
-	// Creation was successful
-	return nil
+	_, err := upsertObject(ctx, r, s, true, l)
+	return err
 }
 
 func (r *AvalanchegoReconciler) ensurePVC(
@@ -127,28 +71,8 @@ func (r *AvalanchegoReconciler) ensurePVC(
 	s *corev1.PersistentVolumeClaim,
 	l logr.Logger,
 ) error {
-	found := &corev1.PersistentVolumeClaim{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      s.ObjectMeta.Name,
-		Namespace: s.ObjectMeta.Namespace,
-	}, found)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		// Error that isn't due to the secret not existing
-		l.Error(err, "Failed to get PVC")
-		return err
-	}
-	// Create the service
-	l.Info("Creating a new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
-	if err := r.Create(context.TODO(), s); err != nil {
-		// Creation failed
-		l.Error(err, "Failed to create new PVC", "PersistentVolumeClaim.Namespace", s.Namespace, "PersistentVolumeClaim.Name", s.Name)
-		return err
-	}
-	// Creation was successful
-	return nil
+	_, err := upsertObject(ctx, r, s, false, l)
+	return err
 }
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
@@ -157,26 +81,84 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 	s *appsv1.StatefulSet,
 	l logr.Logger,
 ) error {
-	found := &appsv1.StatefulSet{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      s.ObjectMeta.Name,
-		Namespace: s.ObjectMeta.Namespace,
-	}, found)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		// Error that isn't due to the secret not existing
-		l.Error(err, "Failed to get StatefulSet")
+	existed, err := upsertObject(ctx, r, s, true, l)
+	if err != nil {
 		return err
 	}
-	// Create the StatefulSet
-	l.Info("Creating a new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
-	if err := r.Create(context.TODO(), s); err != nil {
-		// Creation failed
-		l.Error(err, "Failed to create new StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
+	if existed {
+		sleepTimeSeconds := 3
+		timeoutSeconds := 10
+		for i := 0; i <= (timeoutSeconds / sleepTimeSeconds); i++ {
+			time.Sleep(time.Second * time.Duration(sleepTimeSeconds))
+			found := &appsv1.StatefulSet{}
+			err = r.Get(ctx, types.NamespacedName{
+				Name:      s.ObjectMeta.Name,
+				Namespace: s.ObjectMeta.Namespace,
+			}, found)
+			if err != nil {
+				l.Error(err, "Failed to get StatefulSet")
+				return err
+			}
+			if found.Status.ReadyReplicas == *s.Spec.Replicas {
+				l.Info("Successfully updated existing StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
+				return nil
+			}
+		}
+		err = errors.NewTimeoutError("Timed out waiting for StatefulSet to become ready", timeoutSeconds)
+		l.Error(err, "StatefulSet.Namespace"+s.Namespace+"StatefulSet.Name"+s.Name)
 		return err
 	}
-	// Creation was successful
+	// Create or Update was successful
 	return nil
+}
+
+// Creates or updates k8s object if it already exists.
+// isUpdateable must be true to allow update (some objects like PVC are immutable)
+func upsertObject(
+	ctx context.Context,
+	r *AvalanchegoReconciler,
+	targetObj client.Object,
+	isUpdateable bool,
+	l logr.Logger) (existed bool, err error) {
+
+	commonLogInfo := []interface{}{"Namespace:", targetObj.GetNamespace(), "Type:", targetObj.GetObjectKind().GroupVersionKind().String(), "Name:", targetObj.GetName()}
+
+	targetObjType := reflect.TypeOf(targetObj).Elem()
+	foundObj := reflect.New(targetObjType).Interface().(client.Object)
+
+	err = r.Get(ctx, types.NamespacedName{
+		Name:      targetObj.GetName(),
+		Namespace: targetObj.GetNamespace(),
+	}, foundObj)
+
+	if err == nil && isUpdateable {
+		l.Info("Updating existing object", commonLogInfo...)
+		// Some of k8s services require ResourceVersion to be specified within update
+		targetObj.SetResourceVersion(foundObj.GetResourceVersion())
+		if err := r.Update(ctx, targetObj); err != nil {
+			// Update failed
+			l.Error(err, "Failed to update object", commonLogInfo...)
+			return true, err
+		} else {
+			l.Info("Updated existing object", commonLogInfo...)
+			return true, err
+		}
+	} else if err == nil && !isUpdateable {
+		l.Info("Found existing object but it's not updatable", commonLogInfo...)
+		return true, err
+	} else if !errors.IsNotFound(err) {
+		l.Error(err, "Failed to find existing object", commonLogInfo...)
+		return true, err
+	}
+
+	// Create the Object
+	l.Info("Creating a new object", commonLogInfo...)
+	if err := r.Create(ctx, targetObj); err != nil {
+		// Creation failed
+		l.Error(err, "Failed to create new object", commonLogInfo...)
+		return existed, err
+	}
+	l.Info("Successfully created a new StatefulSet", commonLogInfo...)
+	// Creation was successful
+	return false, nil
 }

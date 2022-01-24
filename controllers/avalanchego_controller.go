@@ -30,6 +30,7 @@ import (
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 	"github.com/ava-labs/avalanchego-operator/controllers/common"
+	"github.com/go-logr/logr"
 )
 
 // AvalanchegoReconciler reconciles a Avalanchego object
@@ -77,10 +78,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//Number of certs should match nodeCount
 	if len(instance.Spec.Certificates) > 0 && len(instance.Spec.Certificates) != instance.Spec.NodeCount {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
-		instance.Status.Error = err.Error()
-		if err := r.Status().Update(ctx, instance); err != nil {
-			l.Error(err, "error calling Update")
-		}
+		setStatusError(ctx, instance, r, err.Error(), l)
 		return ctrl.Result{}, err
 	}
 
@@ -144,19 +142,13 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
 			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
 			if err != nil {
-				instance.Status.Error = err.Error()
-				if err := r.Status().Update(ctx, instance); err != nil {
-					l.Error(err, "error calling Update")
-				}
+				setStatusError(ctx, instance, r, err.Error(), l)
 				return ctrl.Result{}, err
 			}
 			tempCert := string(bytes)
 			bytes, err = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
 			if err != nil {
-				instance.Status.Error = err.Error()
-				if err := r.Status().Update(ctx, instance); err != nil {
-					l.Error(err, "error calling Update")
-				}
+				setStatusError(ctx, instance, r, err.Error(), l)
 				return ctrl.Result{}, err
 			}
 			tempKey := string(bytes)
@@ -223,6 +215,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
 		); err != nil {
+			setStatusError(ctx, instance, r, err.Error(), l)
 			return ctrl.Result{}, err
 		}
 
@@ -231,6 +224,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			_ = r.Status().Update(ctx, instance)
 		}
 	}
+	// Clearing earlier set error
+	setStatusError(ctx, instance, r, "", l)
+
 	return ctrl.Result{}, nil
 }
 
@@ -248,4 +244,11 @@ func notContainsS(s []string, str string) bool {
 		}
 	}
 	return true
+}
+
+func setStatusError(ctx context.Context, i *chainv1alpha1.Avalanchego, r *AvalanchegoReconciler, message string, l logr.Logger) {
+	i.Status.Error = message
+	if err := r.Status().Update(ctx, i); err != nil {
+		l.Error(err, "error calling status Update")
+	}
 }
