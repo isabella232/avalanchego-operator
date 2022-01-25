@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -32,6 +33,13 @@ import (
 	"github.com/go-logr/logr"
 )
 
+const (
+	isUpdateable              = true
+	isNotUpdateable           = false
+	stsUpdateSleepTimeSeconds = 3
+	stsUpdateTimeoutSeconds   = 15
+)
+
 func (r *AvalanchegoReconciler) ensureConfigMap(
 	ctx context.Context,
 	req ctrl.Request,
@@ -39,7 +47,7 @@ func (r *AvalanchegoReconciler) ensureConfigMap(
 	s *corev1.ConfigMap,
 	l logr.Logger,
 ) error {
-	_, err := upsertObject(ctx, r, s, true, l)
+	_, err := upsertObject(ctx, r, s, isUpdateable, l)
 	return err
 }
 
@@ -50,7 +58,12 @@ func (r *AvalanchegoReconciler) ensureSecret(
 	s *corev1.Secret,
 	l logr.Logger,
 ) error {
-	_, err := upsertObject(ctx, r, s, false, l)
+	isSecretUpdateable := isNotUpdateable
+
+	if instance.Spec.Genesis != "" && len(instance.Spec.Certificates) != 0 {
+		isSecretUpdateable = isUpdateable
+	}
+	_, err := upsertObject(ctx, r, s, isSecretUpdateable, l)
 	return err
 }
 
@@ -60,7 +73,8 @@ func (r *AvalanchegoReconciler) ensureService(
 	s *corev1.Service,
 	l logr.Logger,
 ) error {
-	_, err := upsertObject(ctx, r, s, true, l)
+
+	_, err := upsertObject(ctx, r, s, isUpdateable, l)
 	return err
 }
 
@@ -70,40 +84,73 @@ func (r *AvalanchegoReconciler) ensurePVC(
 	s *corev1.PersistentVolumeClaim,
 	l logr.Logger,
 ) error {
-	_, err := upsertObject(ctx, r, s, false, l)
+	// PVC is special in terms of update operation
+	// In order to update it, we need to set Spec.VolumeName and Spec.StorageClassName from existing state
+
+	// Searching for existent PVC first
+	found := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, types.NamespacedName{
+		Name:      s.GetName(),
+		Namespace: s.GetNamespace(),
+	}, found)
+
+	if err == nil {
+		// Setting up Spec.VolumeName and Spec.StorageClassName values from existent PVC
+		s.Spec.VolumeName = found.Spec.VolumeName
+		s.Spec.StorageClassName = found.Spec.StorageClassName
+	} else if !errors.IsNotFound(err) {
+		l.Error(err, "Failed to get existing PVC", s.GetNamespace(), "Type:", s.GetObjectKind().GroupVersionKind().String(), "Name:", s.GetName())
+		return err
+	}
+	_, err = upsertObject(ctx, r, s, isUpdateable, l)
 	return err
 }
 
 func (r *AvalanchegoReconciler) ensureStatefulSet(
 	ctx context.Context,
 	req ctrl.Request,
+	instance *chainv1alpha1.Avalanchego,
 	s *appsv1.StatefulSet,
 	l logr.Logger,
 ) error {
-	existed, err := upsertObject(ctx, r, s, true, l)
+	existed, err := upsertObject(ctx, r, s, isUpdateable, l)
 	if err != nil {
 		return err
 	}
 	if existed {
-		sleepTimeSeconds := 3
-		timeoutSeconds := 10
-		for i := 0; i <= (timeoutSeconds / sleepTimeSeconds); i++ {
-			time.Sleep(time.Second * time.Duration(sleepTimeSeconds))
-			found := &appsv1.StatefulSet{}
+		for i := 0; i <= (stsUpdateTimeoutSeconds / stsUpdateSleepTimeSeconds); i++ {
+
+			foundPod := &corev1.Pod{}
 			err = r.Get(ctx, types.NamespacedName{
-				Name:      s.ObjectMeta.Name,
+				Name:      s.Name + "-0", //Assuming we'll always have 1 pod per StatefulSet
 				Namespace: s.ObjectMeta.Namespace,
-			}, found)
+			}, foundPod)
 			if err != nil {
-				l.Error(err, "Failed to get StatefulSet")
+				l.Error(err, "Failed to get Pod")
 				return err
 			}
-			if found.Status.ReadyReplicas == *s.Spec.Replicas {
-				l.Info("Successfully updated existing StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
+
+			// GenerationLabelName contains a sequence number representing a specific generation of the desired state.
+			// We need to ensure that we've got available pods exactly with this generation ID
+			podGenerationMatch := false
+			if generation, ok := foundPod.Labels[GenerationLabelName]; ok {
+				podGenerationMatch = (generation == fmt.Sprint(instance.Generation))
+			}
+
+			// Watching if pod is in ready state
+			podReady := false
+			if foundPod.Status.Phase == corev1.PodRunning {
+				podReady = true
+			}
+
+			if podGenerationMatch && podReady {
+				l.Info("Successfully awaited for StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
 				return nil
+			} else {
+				time.Sleep(time.Second * time.Duration(stsUpdateSleepTimeSeconds))
 			}
 		}
-		err = errors.NewTimeoutError("Timed out waiting for StatefulSet to become ready", timeoutSeconds)
+		err = errors.NewTimeoutError("Timed out waiting for StatefulSet to become ready", stsUpdateTimeoutSeconds)
 		l.Error(err, "StatefulSet.Namespace"+s.Namespace+"StatefulSet.Name"+s.Name)
 		return err
 	}
@@ -120,7 +167,7 @@ func upsertObject(
 	isUpdateable bool,
 	l logr.Logger) (existed bool, err error) {
 
-	commonLogInfo := []interface{}{"Namespace:", targetObj.GetNamespace(), "Type:", targetObj.GetObjectKind().GroupVersionKind().String(), "Name:", targetObj.GetName()}
+	commonLogLabels := []interface{}{"Namespace:", targetObj.GetNamespace(), "Type:", targetObj.GetObjectKind().GroupVersionKind().String(), "Name:", targetObj.GetName()}
 
 	targetObjType := reflect.TypeOf(targetObj).Elem()
 	foundObj := reflect.New(targetObjType).Interface().(client.Object)
@@ -131,33 +178,33 @@ func upsertObject(
 	}, foundObj)
 
 	if err == nil && isUpdateable {
-		l.Info("Updating existing object", commonLogInfo...)
+		l.Info("Updating existing object", commonLogLabels...)
 		// Some of k8s services require ResourceVersion to be specified within update
 		targetObj.SetResourceVersion(foundObj.GetResourceVersion())
 		if err := r.Update(ctx, targetObj); err != nil {
 			// Update failed
-			l.Error(err, "Failed to update object", commonLogInfo...)
+			l.Error(err, "Failed to update object", commonLogLabels...)
 			return true, err
 		} else {
-			l.Info("Updated existing object", commonLogInfo...)
+			l.Info("Updated existing object", commonLogLabels...)
 			return true, err
 		}
 	} else if err == nil && !isUpdateable {
-		l.Info("Found existing object but it's not updatable", commonLogInfo...)
+		l.Info("Found existing object but it's not updatable", commonLogLabels...)
 		return true, err
 	} else if !errors.IsNotFound(err) {
-		l.Error(err, "Failed to find existing object", commonLogInfo...)
+		l.Error(err, "Failed to find existing object", commonLogLabels...)
 		return true, err
 	}
 
 	// Create the Object
-	l.Info("Creating a new object", commonLogInfo...)
+	l.Info("Creating a new object", commonLogLabels...)
 	if err := r.Create(ctx, targetObj); err != nil {
 		// Creation failed
-		l.Error(err, "Failed to create new object", commonLogInfo...)
-		return existed, err
+		l.Error(err, "Failed to create new object", commonLogLabels...)
+		return false, err
 	}
-	l.Info("Successfully created a new object", commonLogInfo...)
+	l.Info("Successfully created a new object", commonLogLabels...)
 	// Creation was successful
 	return false, nil
 }

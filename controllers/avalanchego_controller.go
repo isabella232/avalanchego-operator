@@ -212,6 +212,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
+			instance,
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
 		); err != nil {

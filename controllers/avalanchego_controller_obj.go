@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"fmt"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,6 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
+)
+
+const (
+	GenerationLabelName = "operator-generation-id"
 )
 
 func (r *AvalanchegoReconciler) avagoConfigMap(
@@ -201,7 +206,8 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": avaGoPrefix + name,
+						"app":               avaGoPrefix + name,
+						GenerationLabelName: fmt.Sprint(instance.Generation),
 					},
 					//TODO Add checksum for cert/key
 				},
