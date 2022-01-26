@@ -20,12 +20,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -34,10 +38,9 @@ import (
 )
 
 const (
-	isUpdateable              = true
-	isNotUpdateable           = false
-	stsUpdateSleepTimeSeconds = 3
-	stsUpdateTimeoutSeconds   = 15
+	isUpdateable            = true
+	isNotUpdateable         = false
+	stsUpdateTimeoutSeconds = 30
 )
 
 func (r *AvalanchegoReconciler) ensureConfigMap(
@@ -113,49 +116,89 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 	s *appsv1.StatefulSet,
 	l logr.Logger,
 ) error {
-	existed, err := upsertObject(ctx, r, s, isUpdateable, l)
+
+	err := waitForStatefulset(ctx, req, instance, s, l, r)
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
+func waitForStatefulset(
+	ctx context.Context,
+	req ctrl.Request,
+	instance *chainv1alpha1.Avalanchego,
+	s *appsv1.StatefulSet,
+	l logr.Logger,
+	r *AvalanchegoReconciler) error {
+
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		panic(err.Error())
+	}
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(clientset, time.Second*5)
+	statefulSetInformer := kubeInformerFactory.Apps().V1().StatefulSets().Informer()
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	updateFunc := func(oldObj, newObj interface{}) {
+		new := newObj.(*appsv1.StatefulSet)
+		old := oldObj.(*appsv1.StatefulSet)
+		l.Info("Waiting for StatefulSet to become ready: " +
+			new.Namespace +
+			"/" + new.Name +
+			" ReadyReplicas: " + fmt.Sprint(new.Status.ReadyReplicas) +
+			" UpdatedReplicas: " + fmt.Sprint(new.Status.UpdatedReplicas))
+		if new.Name == s.Name &&
+			// .Status.CollisionCount is important check, it's zero-value indicates that there is real update happening
+			new.Status.CollisionCount == old.Status.CollisionCount &&
+			new.Status.UpdateRevision == new.Status.CurrentRevision &&
+			new.Status.ReadyReplicas == *s.Spec.Replicas &&
+			new.Status.UpdatedReplicas == *s.Spec.Replicas {
+			l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
+			wg.Done()
+			close(stop)
+		}
+	}
+
+	statefulSetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: updateFunc,
+	})
+	kubeInformerFactory.Start(stop)
+
+	_, err = upsertObject(ctx, r, s, isUpdateable, l)
 	if err != nil {
 		return err
 	}
-	if existed {
-		for i := 0; i <= (stsUpdateTimeoutSeconds / stsUpdateSleepTimeSeconds); i++ {
 
-			foundPod := &corev1.Pod{}
-			err = r.Get(ctx, types.NamespacedName{
-				Name:      s.Name + "-0", //Assuming we'll always have 1 pod per StatefulSet
-				Namespace: s.ObjectMeta.Namespace,
-			}, foundPod)
-			if err != nil {
-				l.Error(err, "Failed to get Pod")
-				return err
-			}
-
-			// GenerationLabelName contains a sequence number representing a specific generation of the desired state.
-			// We need to ensure that we've got available pods exactly with this generation ID
-			podGenerationMatch := false
-			if generation, ok := foundPod.Labels[GenerationLabelName]; ok {
-				podGenerationMatch = (generation == fmt.Sprint(instance.Generation))
-			}
-
-			// Watching if pod is in ready state
-			podReady := false
-			if foundPod.Status.Phase == corev1.PodRunning {
-				podReady = true
-			}
-
-			if podGenerationMatch && podReady {
-				l.Info("Successfully awaited for StatefulSet", "StatefulSet.Namespace", s.Namespace, "StatefulSet.Name", s.Name)
-				return nil
-			} else {
-				time.Sleep(time.Second * time.Duration(stsUpdateSleepTimeSeconds))
-			}
-		}
-		err = errors.NewTimeoutError("Timed out waiting for StatefulSet to become ready", stsUpdateTimeoutSeconds)
-		l.Error(err, "StatefulSet.Namespace"+s.Namespace+"StatefulSet.Name"+s.Name)
+	if waitTimeout(&wg, (time.Second * time.Duration(stsUpdateTimeoutSeconds))) {
+		err = errors.NewTimeoutError("Timed out waiting for StatefulSet: "+s.Name+" to become ready", stsUpdateTimeoutSeconds)
 		return err
 	}
-	// Create or Update was successful
+
 	return nil
+
+}
+
+// waitTimeout waits for the waitgroup for the specified max timeout.
+// Returns true if waiting timed out.
+func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return false // completed normally
+	case <-time.After(timeout):
+		return true // timed out
+	}
 }
 
 // Creates or updates k8s object if it already exists.
@@ -194,7 +237,7 @@ func upsertObject(
 		return true, err
 	} else if !errors.IsNotFound(err) {
 		l.Error(err, "Failed to find existing object", commonLogLabels...)
-		return true, err
+		return false, err
 	}
 
 	// Create the Object
@@ -202,9 +245,9 @@ func upsertObject(
 	if err := r.Create(ctx, targetObj); err != nil {
 		// Creation failed
 		l.Error(err, "Failed to create new object", commonLogLabels...)
-		return false, err
+		return true, err
 	}
 	l.Info("Successfully created a new object", commonLogLabels...)
 	// Creation was successful
-	return false, nil
+	return true, nil
 }
