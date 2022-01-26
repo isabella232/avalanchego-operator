@@ -36,7 +36,7 @@ var _ = Describe("Avalanchego controller", func() {
 			spec := chainv1alpha1.AvalanchegoSpec{
 				Tag:            "v1.6.3",
 				DeploymentName: AvalanchegoValidatorDeploymentName,
-				NodeCount:      3,
+				NodeCount:      5,
 				Env: []corev1.EnvVar{
 					{
 						Name:  "AVAGO_LOG_LEVEL",
@@ -95,7 +95,6 @@ var _ = Describe("Avalanchego controller", func() {
 				return k8sClient.Get(context.Background(), key, f)
 			}, timeout, interval).ShouldNot(Succeed())
 		})
-
 	})
 
 	Context("Static genesis and certificates configuration", func() {
@@ -171,7 +170,7 @@ var _ = Describe("Avalanchego controller", func() {
 
 			By("Creating Avalanchego Bootstrapper successfully")
 			Expect(k8sClient.Create(context.Background(), toCreateBootstrapper)).Should(Succeed())
-			time.Sleep(time.Second * 50)
+			time.Sleep(time.Second * 5)
 
 			Eventually(func() bool {
 				f := &chainv1alpha1.Avalanchego{}
@@ -231,6 +230,7 @@ var _ = Describe("Avalanchego controller", func() {
 				return k8sClient.Get(context.Background(), keyWorker, f)
 			}, timeout, interval).ShouldNot(Succeed())
 		})
+
 	})
 
 })

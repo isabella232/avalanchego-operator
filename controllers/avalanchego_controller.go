@@ -31,7 +31,6 @@ import (
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 	"github.com/ava-labs/avalanchego-operator/controllers/common"
-	"github.com/go-logr/logr"
 )
 
 // AvalanchegoReconciler reconciles a Avalanchego object
@@ -79,7 +78,10 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//Number of certs should match nodeCount
 	if len(instance.Spec.Certificates) > 0 && len(instance.Spec.Certificates) != instance.Spec.NodeCount {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
-		setStatusError(ctx, req, r, err.Error(), l)
+		instance.Status.Error = err.Error()
+		if err := r.Status().Update(ctx, instance); err != nil {
+			l.Error(err, "error calling Update")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -111,7 +113,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		instance.Status.Genesis = instance.Spec.Genesis
 	}
 
-	// NetworkMembersURI is mandatory field, if NetworkMembersURI цфі not previously set up then making it as empty struct
+	// NetworkMembersURI is mandatory field, if NetworkMembersURI has not been previously set up, then making it as empty struct
 	if reflect.ValueOf(instance.Status.NetworkMembersURI).IsZero() {
 		instance.Status.NetworkMembersURI = make([]string, 0)
 	}
@@ -154,13 +156,19 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
 			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
 			if err != nil {
-				setStatusError(ctx, req, r, err.Error(), l)
+				instance.Status.Error = err.Error()
+				if err := r.Status().Update(ctx, instance); err != nil {
+					l.Error(err, "error calling Update")
+				}
 				return ctrl.Result{}, err
 			}
 			tempCert := string(bytes)
 			bytes, err = base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Key)
 			if err != nil {
-				setStatusError(ctx, req, r, err.Error(), l)
+				instance.Status.Error = err.Error()
+				if err := r.Status().Update(ctx, instance); err != nil {
+					l.Error(err, "error calling Update")
+				}
 				return ctrl.Result{}, err
 			}
 			tempKey := string(bytes)
@@ -226,36 +234,24 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
 		); err != nil {
-			setStatusError(ctx, req, r, err.Error(), l)
+			instance.Status.Error = err.Error()
+			if err := r.Status().Update(ctx, instance); err != nil {
+				l.Error(err, "error calling ensureStatefulSet error status update")
+			}
 			return ctrl.Result{}, err
 		} else if notContainsS(instance.Status.NetworkMembersURI, networkMemberUriName) {
-			instance := getFreshInstance(r, ctx, req, l)
 			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, networkMemberUriName)
-			_ = r.Status().Update(ctx, &instance)
+			if err := r.Status().Update(ctx, instance); err != nil {
+				l.Error(err, "error calling NetworkMembersURI status update")
+			}
 		}
 	}
-	// Clearing earlier set error
-	unSetStatusError(ctx, req, r, l)
-
+	// Assuming that all the above operations are now finished successfully, clearing the error status
+	instance.Status.Error = ""
+	if err := r.Status().Update(ctx, instance); err != nil {
+		l.Error(err, "error cleating error status update")
+	}
 	return ctrl.Result{}, nil
-}
-
-func getFreshInstance(r *AvalanchegoReconciler, ctx context.Context, req ctrl.Request, l logr.Logger) chainv1alpha1.Avalanchego {
-	instance := chainv1alpha1.Avalanchego{}
-	err := r.Get(ctx, req.NamespacedName, &instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("Instance Not found")
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return chainv1alpha1.Avalanchego{}
-		}
-		l.Error(err, "Could not get instance")
-		// Error reading the object - requeue the request.
-		return chainv1alpha1.Avalanchego{}
-	}
-	return instance
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -272,38 +268,4 @@ func notContainsS(s []string, str string) bool {
 		}
 	}
 	return true
-}
-
-func setStatusError(ctx context.Context,
-	req ctrl.Request,
-	r *AvalanchegoReconciler,
-	message string,
-	l logr.Logger) {
-
-	instance := getFreshInstance(r, ctx, req, l)
-
-	instance.Status.Error = message
-
-	// NetworkMembersURI is mandatory field, if NetworkMembersURI цфі not previously set up then making it as empty struct
-	if reflect.ValueOf(instance.Status.NetworkMembersURI).IsZero() {
-		instance.Status.NetworkMembersURI = make([]string, 0)
-	}
-
-	if err := r.Status().Update(ctx, &instance); err != nil {
-		l.Error(err, "error calling status Update")
-	}
-
-	l.Info("Set Error status for instance: " + message)
-}
-
-func unSetStatusError(ctx context.Context,
-	req ctrl.Request,
-	r *AvalanchegoReconciler,
-	l logr.Logger) {
-	instance := getFreshInstance(r, ctx, req, l)
-	instance.Status.Error = ""
-	if err := r.Status().Update(ctx, &instance); err != nil {
-		l.Error(err, "error calling status Update")
-	}
-	l.Info("Unset Error status from instance")
 }

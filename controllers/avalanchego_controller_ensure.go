@@ -40,7 +40,12 @@ import (
 const (
 	isUpdateable            = true
 	isNotUpdateable         = false
-	stsUpdateTimeoutSeconds = 30
+	stsUpdateTimeoutSeconds = 15
+)
+
+var (
+	eventsWatcherClientSet *kubernetes.Clientset
+	isTestRun              bool = false
 )
 
 func (r *AvalanchegoReconciler) ensureConfigMap(
@@ -134,35 +139,47 @@ func waitForStatefulset(
 	r *AvalanchegoReconciler) error {
 
 	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
-	if err != nil {
-		panic(err.Error())
+	if eventsWatcherClientSet == nil {
+		var err error
+		eventsWatcherClientSet, err = kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(clientset, time.Second*5)
+	stop := make(chan struct{})
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(eventsWatcherClientSet, time.Second*1)
 	statefulSetInformer := kubeInformerFactory.Apps().V1().StatefulSets().Informer()
 
-	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	updateFunc := func(oldObj, newObj interface{}) {
 		new := newObj.(*appsv1.StatefulSet)
 		old := oldObj.(*appsv1.StatefulSet)
-		l.Info("Waiting for StatefulSet to become ready: " +
-			new.Namespace +
-			"/" + new.Name +
-			" ReadyReplicas: " + fmt.Sprint(new.Status.ReadyReplicas) +
-			" UpdatedReplicas: " + fmt.Sprint(new.Status.UpdatedReplicas))
-		if new.Name == s.Name &&
-			// .Status.CollisionCount is important check, it's zero-value indicates that there is real update happening
-			new.Status.CollisionCount == old.Status.CollisionCount &&
-			new.Status.UpdateRevision == new.Status.CurrentRevision &&
-			new.Status.ReadyReplicas == *s.Spec.Replicas &&
-			new.Status.UpdatedReplicas == *s.Spec.Replicas {
-			l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
-			wg.Done()
-			close(stop)
+		if new.Name == s.Name {
+			l.Info("Waiting for StatefulSet to become ready: " +
+				new.Namespace +
+				"/" + new.Name +
+				" ReadyReplicas: " + fmt.Sprint(new.Status.ReadyReplicas) +
+				" UpdatedReplicas: " + fmt.Sprint(new.Status.UpdatedReplicas))
+
+			// We must do this since testEnv neither creates real pods or changes their status
+			if isTestRun {
+				l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
+				wg.Done()
+				close(stop)
+			} else {
+				// .Status.CollisionCount is important check, it's zero-value indicates that there is real update happening
+				if new.Status.CollisionCount == old.Status.CollisionCount &&
+					new.Status.UpdateRevision == new.Status.CurrentRevision &&
+					new.Status.ReadyReplicas == *s.Spec.Replicas &&
+					new.Status.UpdatedReplicas == *s.Spec.Replicas {
+					l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
+					wg.Done()
+					close(stop)
+				}
+			}
 		}
 	}
 
@@ -171,18 +188,17 @@ func waitForStatefulset(
 	})
 	kubeInformerFactory.Start(stop)
 
-	_, err = upsertObject(ctx, r, s, isUpdateable, l)
+	_, err := upsertObject(ctx, r, s, isUpdateable, l)
 	if err != nil {
 		return err
 	}
-
+	kubeInformerFactory.WaitForCacheSync(stop)
 	if waitTimeout(&wg, (time.Second * time.Duration(stsUpdateTimeoutSeconds))) {
 		err = errors.NewTimeoutError("Timed out waiting for StatefulSet: "+s.Name+" to become ready", stsUpdateTimeoutSeconds)
 		return err
 	}
 
 	return nil
-
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
