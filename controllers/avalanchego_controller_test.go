@@ -229,8 +229,8 @@ var _ = Describe("Avalanchego controller", func() {
 				f := &chainv1alpha1.Avalanchego{}
 				return k8sClient.Get(context.Background(), keyWorker, f)
 			}, timeout, interval).ShouldNot(Succeed())
-
 		})
+
 	})
 
 })

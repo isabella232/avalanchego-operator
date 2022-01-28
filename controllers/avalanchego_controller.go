@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -111,7 +112,15 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		instance.Status.BootstrapperURL = instance.Spec.BootstrapperURL
 		instance.Status.Genesis = instance.Spec.Genesis
 	}
-	_ = r.Status().Update(ctx, instance)
+
+	// NetworkMembersURI is mandatory field, if NetworkMembersURI has not been previously set up, then making it as empty struct
+	if reflect.ValueOf(instance.Status.NetworkMembersURI).IsZero() {
+		instance.Status.NetworkMembersURI = make([]string, 0)
+	}
+
+	if err := r.Status().Update(ctx, instance); err != nil {
+		l.Error(err, "Failed to update Genesis status")
+	}
 
 	if err := r.ensureConfigMap(
 		ctx,
@@ -124,6 +133,9 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
+		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+		networkMemberUriName := avaGoPrefix + serviceName + "-service"
+
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			if err := r.ensureSecret(
@@ -191,8 +203,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		}
-
-		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
 		if err := r.ensureService(
 			ctx,
 			req,
@@ -220,16 +230,26 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
+			instance,
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
 		); err != nil {
+			instance.Status.Error = err.Error()
+			if err := r.Status().Update(ctx, instance); err != nil {
+				l.Error(err, "error calling ensureStatefulSet error status update")
+			}
 			return ctrl.Result{}, err
+		} else if notContainsS(instance.Status.NetworkMembersURI, networkMemberUriName) {
+			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, networkMemberUriName)
+			if err := r.Status().Update(ctx, instance); err != nil {
+				l.Error(err, "error calling NetworkMembersURI status update")
+			}
 		}
-
-		if notContainsS(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service") {
-			instance.Status.NetworkMembersURI = append(instance.Status.NetworkMembersURI, avaGoPrefix+serviceName+"-service")
-			_ = r.Status().Update(ctx, instance)
-		}
+	}
+	// Assuming that all the above operations are now finished successfully, clearing the error status
+	instance.Status.Error = ""
+	if err := r.Status().Update(ctx, instance); err != nil {
+		l.Error(err, "error cleating error status update")
 	}
 	return ctrl.Result{}, nil
 }
