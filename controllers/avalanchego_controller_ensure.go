@@ -153,6 +153,7 @@ func waitForStatefulset(
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	defer close(stop)
 
 	updateFunc := func(oldObj, newObj interface{}) {
 		new := newObj.(*appsv1.StatefulSet)
@@ -166,9 +167,13 @@ func waitForStatefulset(
 
 			// We must do this since testEnv neither creates real pods or changes their status
 			if isTestRun {
-				l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
-				wg.Done()
-				close(stop)
+				if new.Status.CollisionCount == old.Status.CollisionCount &&
+					new.Status.UpdateRevision == new.Status.CurrentRevision &&
+					new.Status.ReadyReplicas == int32(0) &&
+					new.Status.UpdatedReplicas == int32(0) {
+					l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
+					wg.Done()
+				}
 			} else {
 				// .Status.CollisionCount is important check, it's zero-value indicates that there is real update happening
 				if new.Status.CollisionCount == old.Status.CollisionCount &&
@@ -177,7 +182,6 @@ func waitForStatefulset(
 					new.Status.UpdatedReplicas == *s.Spec.Replicas {
 					l.Info("Finished waiting for updated StatefulSet: " + new.Namespace + "/" + new.Name)
 					wg.Done()
-					close(stop)
 				}
 			}
 		}
