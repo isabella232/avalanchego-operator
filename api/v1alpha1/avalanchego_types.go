@@ -72,6 +72,14 @@ type AvalanchegoSpec struct {
 	//Specify docker hub secret
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	//Specify Lables for Avalangego pods
+	// +optional
+	PodLabels map[string]string `json:"podLabels,omitempty"`
+
+	//Specify Annotations for Avalangego pods
+	// +optional
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 type Certificate struct {

@@ -7,7 +7,15 @@ spec:
   deploymentName: test-validator
   nodeCount: 5
   image: avaplatform/avalanchego
-  tag: v1.6.0
+  tag: v1.7.3
   env:
   - name: AVAGO_LOG_LEVEL
     value: debug
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  podLabels:
+    test: test
+  podAnnotations:
+    test: test

@@ -185,6 +185,16 @@ spec:
                 description: Number of nodes to create. All the nodes will be created
                   as validators
                 type: integer
+              podAnnotations:
+                additionalProperties:
+                  type: string
+                description: Specify Annotations for Avalangego pods
+                type: object
+              podLabels:
+                additionalProperties:
+                  type: string
+                description: Specify Lables for Avalangego pods
+                type: object
               resources:
                 description: Resources (requests and limits of CPU and RAM) for the
                   Avalanchego instances
