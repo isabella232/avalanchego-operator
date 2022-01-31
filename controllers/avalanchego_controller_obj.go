@@ -159,7 +159,11 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
 	volumes := r.getVolumes(instance, name)
-	// volumeClaim := r.getVolumeClaimTemplate(instance, name)
+	podLables := map[string]string{}
+
+	podLables["app"] = avaGoPrefix + name
+	podLables["tags.datadoghq.com/version"] = instance.Spec.Tag
+	podLables = mergeMaps(podLables, instance.Spec.PodLabels)
 
 	index := name[len(name)-1:]
 	if (index == "0") && (instance.Spec.BootstrapperURL == "") {
@@ -200,9 +204,8 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 			ServiceName: avaGoPrefix + name + "-service",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": avaGoPrefix + name,
-					},
+					Annotations: instance.Spec.PodAnnotations,
+					Labels:      podLables,
 					//TODO Add checksum for cert/key
 				},
 				Spec: corev1.PodSpec{
@@ -419,4 +422,14 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			},
 		},
 	}
+}
+
+func mergeMaps(ms ...map[string]string) map[string]string {
+	res := map[string]string{}
+	for _, m := range ms {
+		for k, v := range m {
+			res[k] = v
+		}
+	}
+	return res
 }
