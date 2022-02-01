@@ -17,11 +17,17 @@ limitations under the License.
 package common
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/hashing"
 )
@@ -70,18 +76,49 @@ func NewNetwork(networkSize int) (Network, error) {
 }
 
 func newStakingKeyCertPair() (KeyPair, error) {
-	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
+	// Create key to sign cert with
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return KeyPair{}, err
+		return KeyPair{}, fmt.Errorf("couldn't generate rsa key: %w", err)
 	}
-	nodeID, err := ids.ToShortID(hashing.PubkeyBytesToAddress(certBytes))
+
+	// Create self-signed staking cert
+	certTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(0),
+		NotBefore:             time.Date(2020, time.January, 0, 0, 0, 0, 0, time.UTC),
+		NotAfter:              time.Now().AddDate(100, 0, 0),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageDataEncipherment,
+		BasicConstraintsValid: true,
+	}
+	certBytes, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, &key.PublicKey, key)
+	if err != nil {
+		return KeyPair{}, fmt.Errorf("couldn't create certificate: %w", err)
+	}
+
+	var certBuff bytes.Buffer
+	if err := pem.Encode(&certBuff, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes}); err != nil {
+		return KeyPair{}, fmt.Errorf("couldn't write cert file: %w", err)
+	}
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return KeyPair{}, fmt.Errorf("couldn't marshal private key: %w", err)
+	}
+
+	var keyBuff bytes.Buffer
+	if err := pem.Encode(&keyBuff, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}); err != nil {
+		return KeyPair{}, fmt.Errorf("couldn't write private key: %w", err)
+	}
+
+	id, err := ids.ToShortID(hashing.PubkeyBytesToAddress(certBytes))
 	if err != nil {
 		return KeyPair{}, fmt.Errorf("problem deriving node ID from certificate: %w", err)
 	}
-	nodeIDStr := nodeID.PrefixedString(constants.NodeIDPrefix)
+	fullId := id.PrefixedString(constants.NodeIDPrefix)
+
 	return KeyPair{
-		Cert: string(certBytes),
-		Key:  string(keyBytes),
-		Id:   nodeIDStr,
+		Cert: certBuff.String(),
+		Key:  keyBuff.String(),
+		Id:   fullId,
 	}, nil
 }
