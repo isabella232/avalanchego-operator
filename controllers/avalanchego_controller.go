@@ -96,6 +96,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	var network common.Network
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
+		l.Info("Making new network")
 		var err error
 		network, err = common.NewNetwork(instance.Spec.NodeCount)
 		if err != nil {
@@ -119,7 +120,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if err := r.Status().Update(ctx, instance); err != nil {
-		l.Error(err, "Failed to update Genesis status")
+		l.Error(err, "Failed to update instance status")
 	}
 
 	if err := r.ensureConfigMap(
@@ -134,7 +135,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
 		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		networkMemberUriName := avaGoPrefix + serviceName + "-service"
 
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
@@ -227,6 +227,13 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Running ensureStatefulSet in a separate loop
+	// Otherwise ensureSecret will create secret with an empty certificate
+	for i := 0; i < instance.Spec.NodeCount; i++ {
+		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+		networkMemberUriName := avaGoPrefix + serviceName + "-service"
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
