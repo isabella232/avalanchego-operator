@@ -40,7 +40,7 @@ import (
 const (
 	isUpdateable            = true
 	isNotUpdateable         = false
-	stsUpdateTimeoutSeconds = 15
+	stsUpdateTimeoutSeconds = 300
 )
 
 var (
