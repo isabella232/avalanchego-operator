@@ -134,8 +134,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
-		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			if err := r.ensureSecret(
@@ -203,6 +201,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		}
+	}
+
+	// Running ensureStatefulSet in a separate loop
+	// Otherwise ensureSecret will create secret with an empty certificate
+	for i := 0; i < instance.Spec.NodeCount; i++ {
+		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+		networkMemberUriName := avaGoPrefix + serviceName + "-service"
+
 		if err := r.ensureService(
 			ctx,
 			req,
@@ -211,6 +217,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		if err := r.ensurePVC(
 			ctx,
 			req,
@@ -219,21 +226,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		); err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := r.ensureService(
-			ctx,
-			req,
-			r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
-			l,
-		); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
 
-	// Running ensureStatefulSet in a separate loop
-	// Otherwise ensureSecret will create secret with an empty certificate
-	for i := 0; i < instance.Spec.NodeCount; i++ {
-		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		networkMemberUriName := avaGoPrefix + serviceName + "-service"
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
