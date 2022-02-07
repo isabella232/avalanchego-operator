@@ -39,6 +39,11 @@ type AvalanchegoReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+const (
+	createStsAsync asyncCreateStatefulSet = true
+	createStsSync  asyncCreateStatefulSet = false
+)
+
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes/finalizers,verbs=update
@@ -96,6 +101,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	var network common.Network
 	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
+		l.Info("Making new network")
 		var err error
 		network, err = common.NewNetwork(instance.Spec.NodeCount)
 		if err != nil {
@@ -119,7 +125,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if err := r.Status().Update(ctx, instance); err != nil {
-		l.Error(err, "Failed to update Genesis status")
+		l.Error(err, "Failed to update instance status")
 	}
 
 	if err := r.ensureConfigMap(
@@ -133,9 +139,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
-		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
-		networkMemberUriName := avaGoPrefix + serviceName + "-service"
-
 		switch {
 		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
 			if err := r.ensureSecret(
@@ -203,6 +206,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		}
+	}
+
+	// Running ensureStatefulSet in a separate loop
+	// Otherwise ensureSecret will create secret with an empty certificate
+	for i := 0; i < instance.Spec.NodeCount; i++ {
+		serviceName := instance.Spec.DeploymentName + "-" + strconv.Itoa(i)
+		networkMemberUriName := avaGoPrefix + serviceName + "-service"
+
 		if err := r.ensureService(
 			ctx,
 			req,
@@ -211,6 +222,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		if err := r.ensurePVC(
 			ctx,
 			req,
@@ -219,20 +231,23 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		); err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := r.ensureService(
-			ctx,
-			req,
-			r.avagoService(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
-			l,
-		); err != nil {
-			return ctrl.Result{}, err
+
+		var async asyncCreateStatefulSet
+
+		// In case of brand new network - create all statefulSets asynchronously
+		if !reflect.ValueOf(network).IsZero() {
+			async = createStsAsync
+		} else {
+			async = createStsSync
 		}
+
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
 			instance,
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
+			async,
 		); err != nil {
 			instance.Status.Error = err.Error()
 			if err := r.Status().Update(ctx, instance); err != nil {
