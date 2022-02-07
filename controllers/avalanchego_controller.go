@@ -39,6 +39,11 @@ type AvalanchegoReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+const (
+	createStsAsync asyncCreateStatefulSet = true
+	createStsSync  asyncCreateStatefulSet = false
+)
+
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=chain.avax.network,resources=avalanchegoes/finalizers,verbs=update
@@ -227,12 +232,22 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
+		var async asyncCreateStatefulSet
+
+		// In case of brand new network - create all statefulSets asynchronously
+		if !reflect.ValueOf(network).IsZero() {
+			async = createStsAsync
+		} else {
+			async = createStsSync
+		}
+
 		if err := r.ensureStatefulSet(
 			ctx,
 			req,
 			instance,
 			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
 			l,
+			async,
 		); err != nil {
 			instance.Status.Error = err.Error()
 			if err := r.Status().Update(ctx, instance); err != nil {

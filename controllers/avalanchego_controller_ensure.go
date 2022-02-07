@@ -43,6 +43,8 @@ const (
 	stsUpdateTimeoutSeconds = 30
 )
 
+type asyncCreateStatefulSet bool
+
 var (
 	eventsWatcherClientSet *kubernetes.Clientset
 	isTestRun              bool = false
@@ -120,9 +122,10 @@ func (r *AvalanchegoReconciler) ensureStatefulSet(
 	instance *chainv1alpha1.Avalanchego,
 	s *appsv1.StatefulSet,
 	l logr.Logger,
+	async asyncCreateStatefulSet,
 ) error {
 
-	err := waitForStatefulset(ctx, req, instance, s, l, r)
+	err := waitForStatefulset(ctx, req, instance, s, l, r, async)
 	if err != nil {
 		return err
 	} else {
@@ -136,7 +139,8 @@ func waitForStatefulset(
 	instance *chainv1alpha1.Avalanchego,
 	s *appsv1.StatefulSet,
 	l logr.Logger,
-	r *AvalanchegoReconciler) error {
+	r *AvalanchegoReconciler,
+	async asyncCreateStatefulSet) error {
 
 	// creates the clientset
 	if eventsWatcherClientSet == nil {
@@ -187,16 +191,21 @@ func waitForStatefulset(
 		}
 	}
 
-	statefulSetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: updateFunc,
-	})
-	kubeInformerFactory.Start(stop)
+	if !async {
+		statefulSetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			UpdateFunc: updateFunc,
+		})
+		kubeInformerFactory.Start(stop)
+	} else {
+		// ensureStatefulSet was called in async mode
+		wg.Done()
+	}
 
 	_, err := upsertObject(ctx, r, s, isUpdateable, l)
 	if err != nil {
 		return err
 	}
-	kubeInformerFactory.WaitForCacheSync(stop)
+
 	if waitTimeout(&wg, (time.Second * time.Duration(stsUpdateTimeoutSeconds))) {
 		err = errors.NewTimeoutError("Timed out waiting for StatefulSet: "+s.Name+" to become ready", stsUpdateTimeoutSeconds)
 		return err
