@@ -19,3 +19,8 @@ spec:
     test: test
   podAnnotations:
     test: test
+  # Example when using pre-defined secrets
+  # existingSecrets:
+  # - custom-avago-test-validator-0-key
+  # - custom-avago-test-validator-1-key
+  # - custom-avago-test-validator-2-key

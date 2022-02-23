@@ -79,10 +79,46 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	// NetworkMembersURI is mandatory field, if NetworkMembersURI has not been previously set up, then making it as empty struct
+	if reflect.ValueOf(instance.Status.NetworkMembersURI).IsZero() {
+		instance.Status.NetworkMembersURI = make([]string, 0)
+	}
+
 	//Pre flight checks
 	//Number of certs should match nodeCount
+	//TODO: move to validation webhook
 	if len(instance.Spec.Certificates) > 0 && len(instance.Spec.Certificates) != instance.Spec.NodeCount {
 		err = errors.NewBadRequest("Number of provided certificate does not match nodeCount")
+		instance.Status.Error = err.Error()
+		if err := r.Status().Update(ctx, instance); err != nil {
+			l.Error(err, "error calling Update")
+		}
+		return ctrl.Result{}, err
+	}
+	//Number of secrets should match nodeCount
+	//TODO: move to validation webhook
+	if len(instance.Spec.ExistingSecrets) > 0 && len(instance.Spec.ExistingSecrets) != instance.Spec.NodeCount {
+		err = errors.NewBadRequest("Number of provided secrets does not match nodeCount")
+		instance.Status.Error = err.Error()
+		if err := r.Status().Update(ctx, instance); err != nil {
+			l.Error(err, "error calling Update")
+		}
+		return ctrl.Result{}, err
+	}
+	// Genesis should be inside secrets or omitted for mainnet, fuji or local networks
+	//TODO: move to validation webhook
+	if len(instance.Spec.ExistingSecrets) > 0 && instance.Spec.Genesis != "" {
+		err = errors.NewBadRequest("Genesis cannot be specified when using pre-defined secrets. genesis.json key should be avaliable in secret instead and AVAGO_GENESIS env var provided.")
+		instance.Status.Error = err.Error()
+		if err := r.Status().Update(ctx, instance); err != nil {
+			l.Error(err, "error calling Update")
+		}
+		return ctrl.Result{}, err
+	}
+	// Certificates should be inside secrets
+	//TODO: move to validation webhook
+	if len(instance.Spec.ExistingSecrets) > 0 && len(instance.Spec.Certificates) > 0 {
+		err = errors.NewBadRequest("Certificates cannot be specified when using pre-defined secrets.")
 		instance.Status.Error = err.Error()
 		if err := r.Status().Update(ctx, instance); err != nil {
 			l.Error(err, "error calling Update")
@@ -100,7 +136,10 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	var network common.Network
-	if (instance.Status.BootstrapperURL == "") && (instance.Spec.BootstrapperURL == "") && (instance.Spec.Genesis == "") {
+	if (instance.Status.BootstrapperURL == "") &&
+		(instance.Spec.BootstrapperURL == "") &&
+		(instance.Spec.Genesis == "") &&
+		len(instance.Spec.ExistingSecrets) == 0 {
 		l.Info("Making new network")
 		var err error
 		network, err = common.NewNetwork(instance.Spec.NodeCount)
@@ -119,11 +158,6 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		instance.Status.Genesis = instance.Spec.Genesis
 	}
 
-	// NetworkMembersURI is mandatory field, if NetworkMembersURI has not been previously set up, then making it as empty struct
-	if reflect.ValueOf(instance.Status.NetworkMembersURI).IsZero() {
-		instance.Status.NetworkMembersURI = make([]string, 0)
-	}
-
 	if err := r.Status().Update(ctx, instance); err != nil {
 		l.Error(err, "Failed to update instance status")
 	}
@@ -140,14 +174,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	for i := 0; i < instance.Spec.NodeCount; i++ {
 		switch {
-		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != ""):
+		case (instance.Spec.BootstrapperURL == "") && (network.Genesis != "") && len(instance.Spec.ExistingSecrets) == 0:
 			if err := r.ensureSecret(
 				ctx,
 				req,
 				instance,
 				r.avagoSecret(
 					instance,
-					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
+					getSecretBaseName(*instance, i),
 					network.KeyPairs[i].Cert,
 					network.KeyPairs[i].Key,
 					network.Genesis,
@@ -156,7 +190,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			); err != nil {
 				return ctrl.Result{}, err
 			}
-		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0):
+		case (instance.Spec.Genesis != "") && (len(instance.Spec.Certificates) > 0) && len(instance.Spec.ExistingSecrets) == 0:
 			bytes, err := base64.StdEncoding.DecodeString(instance.Spec.Certificates[i].Cert)
 			if err != nil {
 				instance.Status.Error = err.Error()
@@ -175,13 +209,14 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 			tempKey := string(bytes)
+			// Will not create or update any if len(instance.Spec.Secrets) > 0
 			if err := r.ensureSecret(
 				ctx,
 				req,
 				instance,
 				r.avagoSecret(
 					instance,
-					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
+					getSecretBaseName(*instance, i),
 					tempCert,
 					tempKey,
 					instance.Spec.Genesis,
@@ -191,19 +226,21 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		default:
-			if err := r.ensureSecret(
-				ctx,
-				req,
-				instance,
-				r.avagoSecret(
+			if len(instance.Spec.ExistingSecrets) == 0 {
+				if err := r.ensureSecret(
+					ctx,
+					req,
 					instance,
-					instance.Spec.DeploymentName+"-"+strconv.Itoa(i),
-					"",
-					"",
-					instance.Spec.Genesis,
-				), l,
-			); err != nil {
-				return ctrl.Result{}, err
+					r.avagoSecret(
+						instance,
+						getSecretBaseName(*instance, i),
+						"",
+						"",
+						instance.Spec.Genesis,
+					), l,
+				); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
@@ -245,7 +282,7 @@ func (r *AvalanchegoReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			ctx,
 			req,
 			instance,
-			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i)),
+			r.avagoStatefulSet(instance, instance.Spec.DeploymentName+"-"+strconv.Itoa(i), i),
 			l,
 			async,
 		); err != nil {
@@ -283,4 +320,8 @@ func notContainsS(s []string, str string) bool {
 		}
 	}
 	return true
+}
+
+func getSecretBaseName(instance chainv1alpha1.Avalanchego, nodeId int) string {
+	return instance.Spec.DeploymentName + "-" + strconv.Itoa(nodeId)
 }

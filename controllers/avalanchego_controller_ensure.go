@@ -70,7 +70,8 @@ func (r *AvalanchegoReconciler) ensureSecret(
 ) error {
 	isSecretUpdateable := isNotUpdateable
 
-	if instance.Spec.Genesis != "" && len(instance.Spec.Certificates) != 0 {
+	// Check len(instance.Spec.ExistingSecrets) != 0 means client already created pre-defined secrets. They should not be updated.
+	if instance.Spec.Genesis != "" && len(instance.Spec.Certificates) != 0 && len(instance.Spec.ExistingSecrets) == 0 {
 		isSecretUpdateable = isUpdateable
 	}
 	_, err := upsertObject(ctx, r, s, isSecretUpdateable, l)

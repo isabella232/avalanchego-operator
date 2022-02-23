@@ -17,15 +17,17 @@ limitations under the License.
 package controllers
 
 import (
-	"reflect"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
+
+	avalanchegoConstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 func (r *AvalanchegoReconciler) avagoConfigMap(
@@ -154,11 +156,12 @@ func (r *AvalanchegoReconciler) avagoPVC(
 func (r *AvalanchegoReconciler) avagoStatefulSet(
 	instance *chainv1alpha1.Avalanchego,
 	name string,
+	nodeId int,
 ) *appsv1.StatefulSet {
 	var initContainers []corev1.Container
 	envVars := r.getEnvVars(instance)
 	volumeMounts := r.getVolumeMounts(instance, name)
-	volumes := r.getVolumes(instance, name)
+	volumes := r.getVolumes(instance, name, nodeId)
 	podLables := map[string]string{}
 
 	podLables["app"] = avaGoPrefix + name
@@ -328,13 +331,10 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			Name:  "AVAGO_DB_DIR",
 			Value: "/root/.avalanchego",
 		},
-		{
-			Name:  "AVAGO_GENESIS",
-			Value: "/etc/avalanchego/st-certs/genesis.json",
-		},
 	}
-	//Append genesis and certificates, if it is a new network or cert provided
-	if (instance.Spec.BootstrapperURL == "") || (len(instance.Spec.Certificates) > 0) {
+
+	//Append certificates, if it is a new network or cert or existing secrets are provided
+	if (instance.Spec.BootstrapperURL == "") || (len(instance.Spec.Certificates) > 0) || len(instance.Spec.ExistingSecrets) > 0 {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "AVAGO_STAKING_TLS_CERT_FILE",
 			Value: "/etc/avalanchego/st-certs/staker.crt",
@@ -352,6 +352,24 @@ func (r *AvalanchegoReconciler) getEnvVars(instance *chainv1alpha1.Avalanchego) 
 			envVars[envVarsI].Value = v.Value
 		}
 	}
+
+	// Adding AVAGO_GENESIS env var only for custom networks
+	for _, v := range envVars {
+		switch v.Name {
+		case "AVAGO_NETWORK_ID":
+			if networkId, err := strconv.Atoi(v.Value); err == nil {
+				if uint32(networkId) != avalanchegoConstants.MainnetID &&
+					uint32(networkId) != avalanchegoConstants.FujiID &&
+					uint32(networkId) != avalanchegoConstants.LocalID {
+					envVars = append(envVars, corev1.EnvVar{
+						Name:  "AVAGO_GENESIS",
+						Value: "/etc/avalanchego/st-certs/genesis.json",
+					})
+				}
+			}
+		}
+	}
+
 	return envVars
 }
 
@@ -385,7 +403,15 @@ func (r *AvalanchegoReconciler) getVolumeMounts(instance *chainv1alpha1.Avalanch
 	}
 }
 
-func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, name string) []corev1.Volume {
+func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, name string, nodeId int) []corev1.Volume {
+
+	var secretName string
+	if len(instance.Spec.ExistingSecrets) > 0 {
+		secretName = instance.Spec.ExistingSecrets[nodeId]
+	} else {
+		secretName = avaGoPrefix + name + "-key"
+	}
+
 	return []corev1.Volume{
 		{
 			Name: avaGoPrefix + "db-" + name,
@@ -417,7 +443,7 @@ func (r *AvalanchegoReconciler) getVolumes(instance *chainv1alpha1.Avalanchego, 
 			Name: avaGoPrefix + "cert-" + name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: avaGoPrefix + name + "-key",
+					SecretName: secretName,
 				},
 			},
 		},

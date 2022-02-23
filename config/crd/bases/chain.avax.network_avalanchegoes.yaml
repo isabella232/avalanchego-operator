@@ -160,6 +160,12 @@ spec:
                   - name
                   type: object
                 type: array
+              existingSecrets:
+                description: Predefined secrets for nodes, quantity, should correlate
+                  to nodeCount
+                items:
+                  type: string
+                type: array
               genesis:
                 description: Genesis for nodes, that will be attached to existing
                   network

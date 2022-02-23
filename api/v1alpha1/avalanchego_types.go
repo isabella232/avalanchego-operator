@@ -47,6 +47,10 @@ type AvalanchegoSpec struct {
 	// +optional
 	Genesis string `json:"genesis,omitempty"`
 
+	// Predefined secrets for nodes, quantity, should correlate to nodeCount
+	// +optional
+	ExistingSecrets []string `json:"existingSecrets,omitempty"`
+
 	// Certificates for nodes, quantity, should correlate to nodeCount
 	// +optional
 	Certificates []Certificate `json:"certificates,omitempty"`
