@@ -17,13 +17,15 @@ limitations under the License.
 package controllers
 
 import (
+	"reflect"
+	"strconv"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
 
 	chainv1alpha1 "github.com/ava-labs/avalanchego-operator/api/v1alpha1"
 
@@ -242,6 +244,21 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 									ContainerPort: 9651,
 								},
 							},
+							// HTTP GET to 9650/ext/health
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/ext/health",
+										Port:   intstr.FromString("http"),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								InitialDelaySeconds: 120,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       5,
+								FailureThreshold:    2,
+							},
+							//Readiness probe is not used for now as we rely on NLB for incoming traffic
 						},
 					},
 					ImagePullSecrets: instance.Spec.ImagePullSecrets,
