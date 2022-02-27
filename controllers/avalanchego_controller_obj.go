@@ -258,6 +258,19 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 								PeriodSeconds:       5,
 								FailureThreshold:    2,
 							},
+							//2 days for avago to start
+							StartupProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/ext/health",
+										Port:   intstr.FromString("http"),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								TimeoutSeconds:   2,
+								PeriodSeconds:    15,
+								FailureThreshold: 11520,
+							},
 							//Readiness probe is not used for now as we rely on NLB for incoming traffic
 						},
 					},
