@@ -248,7 +248,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 							LivenessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path:   "/ext/health",
+										Path:   "/ext/health/liveness",
 										Port:   intstr.FromString("http"),
 										Scheme: corev1.URISchemeHTTP,
 									},
@@ -262,7 +262,7 @@ func (r *AvalanchegoReconciler) avagoStatefulSet(
 							StartupProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path:   "/ext/health",
+										Path:   "/ext/health/readiness",
 										Port:   intstr.FromString("http"),
 										Scheme: corev1.URISchemeHTTP,
 									},
